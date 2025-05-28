@@ -1,24 +1,18 @@
 package com.joincoded.bankapi
 
 import android.os.Bundle
-import android.window.SplashScreen
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavHost
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.joincoded.bankapi.login.LoginScreen
 import com.joincoded.bankapi.ui.theme.BankAPITheme
 
 class MainActivity : ComponentActivity() {
@@ -26,12 +20,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             BankAPITheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-
+                    AppNavigator()
                 }
             }
         }
@@ -45,25 +38,38 @@ enum class NavRoutes(val value: String) {
     NAV_ROUTE_REGISTRATION_SCREEN("registrationScreen"),
     NAV_ROUTE_PROFILE_SCREEN("profileScreen"),
     NAV_ROUTE_SHOP_SCREEN("shopScreen"),
-    NAV_ROUTE_SHOP_HISTORY("shopHistory"),
-
-
-
+    NAV_ROUTE_SHOP_HISTORY("shopHistory")
 }
 
 @Composable
 fun AppNavigator(
-    modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
     startDestination: String = NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value
 ) {
-
     NavHost(
-        modifier = modifier,
         navController = navController,
         startDestination = startDestination
     ) {
-
+        composable(NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value) {
+            LoginScreen(
+                onLoginClick = { email, password ->
+                    println("Login clicked: $email, $password")
+                },
+                onRegisterClick = {
+                    navController.navigate(NavRoutes.NAV_ROUTE_REGISTRATION_SCREEN.value)
+                },
+                onForgotPasswordClick = {
+                    println("Forgot password clicked")
+                },
+                onSocialClick = { platform ->
+                    println("Social clicked: $platform")
+                }
+            )
+        }
+        composable(NavRoutes.NAV_ROUTE_REGISTRATION_SCREEN.value) {
+            Surface {
+                androidx.compose.material3.Text("Registration Screen")
+            }
+        }
     }
 }
-
