@@ -57,7 +57,6 @@ fun AppNavigator(
     navController: NavHostController = rememberNavController(),
     startDestination: String = NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value
 ) {
-
     NavHost(
         modifier = modifier,
         navController = navController,
