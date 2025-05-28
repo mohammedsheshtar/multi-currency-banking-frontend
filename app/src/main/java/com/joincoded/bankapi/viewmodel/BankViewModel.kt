@@ -37,7 +37,6 @@ class BankViewModel : ViewModel() {
             } catch (e: Exception) {
                 println("Error $e")
             }
-
         }
     }
 }

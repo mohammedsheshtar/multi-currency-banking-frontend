@@ -55,7 +55,8 @@ interface AuthenticationApiService {
 
 interface KycApiService {
     @GET("api/v1/users/kyc")
-    suspend fun getMyKYC(@Header(Constants.authorization) token: String?): Response<*>?
+    suspend fun getMyKYC(@Header(Constants.authorization) token: String?,
+                         request: KYCRequest): Response<*>?
 
     @POST("api/v1/users/kyc")
     suspend fun addOrUpdateMyKYC(@Header(Constants.authorization) token: String?,
