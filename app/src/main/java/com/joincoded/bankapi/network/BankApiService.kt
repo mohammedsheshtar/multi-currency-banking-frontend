@@ -50,7 +50,7 @@ interface AccountApiService {
 
 interface AuthenticationApiService {
     @POST("api/v1/authentication/login")
-    suspend fun login(@Body authRequest: AuthenticationRequest): AuthenticationResponse
+    suspend fun login(@Body authRequest: AuthenticationRequest): Response<AuthenticationResponse>
 }
 
 interface KycApiService {
@@ -98,7 +98,7 @@ interface TransactionApiService {
 
     @GET("api/v1/accounts/transactions/{accountId}")
     suspend fun getTransactionHistory(@Header(Constants.authorization) token: String?,
-                                      @Path("accountId") accountId: Int)
+                                      @Path("accountId") accountId: Int): Response<*>
 }
 
 interface UserApiService {
