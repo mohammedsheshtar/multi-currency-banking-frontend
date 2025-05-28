@@ -60,4 +60,12 @@ object RetrofitHelper {
             .build()
             .create(UserApiService::class.java)
     }
+
+    val KycApi: KycApiService by lazy {
+        Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(KycApiService::class.java)
+    }
 }
