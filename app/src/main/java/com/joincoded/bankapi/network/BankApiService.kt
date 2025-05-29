@@ -3,6 +3,7 @@ package com.joincoded.bankapi.network
 import com.joincoded.bankapi.data.AmountChange
 import com.joincoded.bankapi.data.User
 import com.joincoded.bankapi.data.request.AuthenticationRequest
+import com.joincoded.bankapi.data.request.ConversionRateRequest
 import com.joincoded.bankapi.data.request.CreateAccount
 import com.joincoded.bankapi.data.request.CreateUserDTO
 import com.joincoded.bankapi.data.request.DepositRequest
@@ -105,4 +106,13 @@ interface TransactionApiService {
 interface UserApiService {
     @POST("api/v1/authentication/register")
     suspend fun registerUser(@Body request: CreateUserDTO): Response<Any>
+}
+
+interface ConversionRateApiService {
+    @GET
+    suspend fun getAllRates(@Header(Constants.authorization) token: String?): Response<*>
+
+    @GET
+    suspend fun getConversionRate(@Header(Constants.authorization) token: String?,
+                                  @Body request: ConversionRateRequest): Response<*>
 }
