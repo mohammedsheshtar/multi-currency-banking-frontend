@@ -104,3 +104,9 @@ data class TransactionHistoryResponse(
     val transactionType: String,
     val conversionRate: BigDecimal?
 )
+
+data class ConversionRateResponse(
+    val from: String,
+    val to: String,
+    val rate: BigDecimal
+)
