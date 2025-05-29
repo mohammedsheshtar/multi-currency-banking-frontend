@@ -54,7 +54,7 @@ fun LoginScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxSize()
             ) {
-                Spacer(modifier = Modifier.height(80.dp))
+                Spacer(modifier = Modifier.height(120.dp))
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))

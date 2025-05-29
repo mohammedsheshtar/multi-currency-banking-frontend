@@ -13,6 +13,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.joincoded.bankapi.login.LoginScreen
+import com.joincoded.bankapi.login.RegistrationKycScreen
 import com.joincoded.bankapi.ui.theme.BankAPITheme
 
 class MainActivity : ComponentActivity() {
@@ -67,9 +68,11 @@ fun AppNavigator(
             )
         }
         composable(NavRoutes.NAV_ROUTE_REGISTRATION_SCREEN.value) {
-            Surface {
-                androidx.compose.material3.Text("Registration Screen")
-            }
+            RegistrationKycScreen(
+                onRegisterClick = { fullName, email, password, confirmPassword, phone, nationalId, address, dateOfBirth ->
+                    println("Registered: $fullName, $email, $phone, $nationalId, $address, $dateOfBirth")
+                }
+            )
         }
     }
 }
