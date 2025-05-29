@@ -68,4 +68,12 @@ object RetrofitHelper {
             .build()
             .create(KycApiService::class.java)
     }
+
+    val ConversionRateApi: ConversionRateApiService by lazy {
+        Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(ConversionRateApiService::class.java)
+    }
 }
