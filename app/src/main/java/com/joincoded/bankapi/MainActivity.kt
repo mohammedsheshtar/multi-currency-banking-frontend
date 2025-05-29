@@ -14,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.joincoded.bankapi.login.LoginScreen
 import com.joincoded.bankapi.login.RegistrationScreen
+import com.joincoded.bankapi.profile.ProfileScreen
 import com.joincoded.bankapi.ui.theme.BankAPITheme
 
 class MainActivity : ComponentActivity() {
@@ -45,7 +46,7 @@ enum class NavRoutes(val value: String) {
 @Composable
 fun AppNavigator(
     navController: NavHostController = rememberNavController(),
-    startDestination: String = NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value
+    startDestination: String = NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value // Correct start destination
 ) {
     NavHost(
         navController = navController,
@@ -73,6 +74,9 @@ fun AppNavigator(
                     println("Registered: $fullName, $email, $phone, $nationalId, $address")
                 }
             )
+        }
+        composable(NavRoutes.NAV_ROUTE_PROFILE_SCREEN.value) {
+            ProfileScreen()
         }
     }
 }
