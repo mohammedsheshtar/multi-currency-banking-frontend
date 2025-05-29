@@ -22,147 +22,83 @@ import androidx.compose.ui.unit.sp
 fun LoginScreen(
     onLoginClick: (String, String) -> Unit,
     onRegisterClick: () -> Unit,
-    onForgotPasswordClick: () -> Unit,
-    onSocialClick: (String) -> Unit
+    onForgotPasswordClick: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    val neonPurple = Color(0xFFB297E7)
-    val darkBackground = Brush.verticalGradient(
-        colors = listOf(Color(0xFF1C1C1E), Color(0xFFA594C7), Color(0xFF1C1C1E))
-    )
-
-    MaterialTheme(
-        colorScheme = darkColorScheme(
-            primary = neonPurple,
-            onPrimary = Color.White,
-            background = Color(0xFF1C1C1E),
-            surface = Color(0xFF1C1C1E),
-            onBackground = Color.White,
-            onSurface = Color.White
-        )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF121212)),
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(darkBackground)
-                .padding(24.dp)
+        Card(
+            modifier = Modifier.width(320.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1C1C1E)),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.elevatedCardElevation(8.dp)
         ) {
             Column(
-                verticalArrangement = Arrangement.Top,
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(120.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color.Black.copy(alpha = 0.3f))
-                        .padding(horizontal = 24.dp, vertical = 12.dp)
-                ) {
-                    Text(
-                        text = "Welcome Back",
-                        style = TextStyle(
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = neonPurple.copy(alpha = 0.9f)
-                        )
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "Log in to your account",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White
+                    "Welcome Back",
+                    style = TextStyle(fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFFB297E7)),
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
-            }
-
-            Column(
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = 100.dp)
-            ) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.3f)),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        OutlinedTextField(
-                            value = email,
-                            onValueChange = { email = it },
-                            label = { Text("Email address", color = Color.White) },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                focusedIndicatorColor = neonPurple,
-                                unfocusedIndicatorColor = Color.White.copy(alpha = 0.5f),
-                                cursorColor = neonPurple
-                            )
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        OutlinedTextField(
-                            value = password,
-                            onValueChange = { password = it },
-                            label = { Text("Password", color = Color.White) },
-                            singleLine = true,
-                            visualTransformation = PasswordVisualTransformation(),
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                focusedIndicatorColor = neonPurple,
-                                unfocusedIndicatorColor = Color.White.copy(alpha = 0.5f),
-                                cursorColor = neonPurple
-                            )
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        TextButton(onClick = onForgotPasswordClick) {
-                            Text("Forgot Password?", color = neonPurple)
-                        }
-                    }
-                }
+                Text("Log in to your account", color = Color.White, style = MaterialTheme.typography.bodyMedium)
                 Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    placeholder = { Text("Email address", color = Color.White.copy(alpha = 0.6f)) },
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFF323232),
+                        unfocusedContainerColor = Color(0xFF323232),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        textColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                )
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    placeholder = { Text("Password", color = Color.White.copy(alpha = 0.6f)) },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFF323232),
+                        unfocusedContainerColor = Color(0xFF323232),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        textColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                )
+
+                TextButton(onClick = onForgotPasswordClick) {
+                    Text("Forgot Password?", color = Color(0xFFB297E7))
+                }
 
                 Button(
                     onClick = { onLoginClick(email, password) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black.copy(alpha = 0.8f))
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF411F)),
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
                 ) {
-                    Text("Sign In", color = neonPurple)
+                    Text("Sign In", color = Color.White)
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
 
                 TextButton(onClick = onRegisterClick) {
-                    Text(
-                        "Don't have an account? Sign Up",
-                        color = neonPurple,
-                        textDecoration = TextDecoration.Underline
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
-                repeat(3) { index ->
-                    IconButton(onClick = { onSocialClick("social$index") }) {
-                        Box(
-                            modifier = Modifier
-                                .size(60.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.2f))
-                        )
-                    }
+                    Text("Don't have an account? Sign Up", color = Color(0xFFB297E7), textDecoration = TextDecoration.Underline)
                 }
             }
         }
