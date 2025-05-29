@@ -23,6 +23,7 @@ import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface BankApiService {
 
@@ -109,10 +110,11 @@ interface UserApiService {
 }
 
 interface ConversionRateApiService {
-    @GET
+    @GET("api/v1/conversion/rates")
     suspend fun getAllRates(@Header(Constants.authorization) token: String?): Response<*>
 
-    @GET
+    @GET("api/v1/conversion/rate")
     suspend fun getConversionRate(@Header(Constants.authorization) token: String?,
-                                  @Body request: ConversionRateRequest): Response<*>
+                                  @Query("from") from: String,
+                                  @Query("to") to: String): Response<*>
 }
