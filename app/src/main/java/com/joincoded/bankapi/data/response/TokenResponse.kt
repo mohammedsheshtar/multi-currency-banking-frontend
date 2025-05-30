@@ -110,3 +110,9 @@ data class ConversionRateResponse(
     val to: String,
     val rate: BigDecimal
 )
+
+data class CurrencyResponse(
+    val countryCode: String,
+    val symbol: String,
+    val name: String
+)
