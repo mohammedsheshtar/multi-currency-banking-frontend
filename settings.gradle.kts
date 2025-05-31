@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "BankAPI"
+rootProject.name = "multi-currency-banking-backend"
 include(":app")

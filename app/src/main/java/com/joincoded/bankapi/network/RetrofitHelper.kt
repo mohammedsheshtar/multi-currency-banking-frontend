@@ -68,4 +68,12 @@ object RetrofitHelper {
             .build()
             .create(KycApiService::class.java)
     }
+
+    val TransferApi: TransferApiService by lazy {
+        Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(TransferApiService::class.java)
+    }
 }
