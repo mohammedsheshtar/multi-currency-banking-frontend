@@ -46,7 +46,7 @@ enum class NavRoutes(val value: String) {
 @Composable
 fun AppNavigator(
     navController: NavHostController = rememberNavController(),
-    startDestination: String = NavRoutes.NAV_ROUTE_PROFILE_SCREEN.value
+    startDestination: String = NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value // Back to Login
 ) {
     NavHost(
         navController = navController,
@@ -80,3 +80,4 @@ fun AppNavigator(
         }
     }
 }
+
