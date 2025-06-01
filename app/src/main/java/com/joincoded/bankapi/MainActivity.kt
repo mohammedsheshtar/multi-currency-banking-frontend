@@ -23,7 +23,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             BankAPITheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier
                         .fillMaxSize()

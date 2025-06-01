@@ -43,12 +43,12 @@ class ExchangeRateViewModel : ViewModel() {
 
     fun setFromCurrency(value: String) {
         _fromCurrency.value = value
-        maybeCalculateRate()
+        validateCurrency()
     }
 
     fun setToCurrency(value: String) {
         _toCurrency.value = value
-        maybeCalculateRate()
+        validateCurrency()
     }
 
 
@@ -112,11 +112,12 @@ class ExchangeRateViewModel : ViewModel() {
         val from = _fromCurrency.value.uppercase()
         val to = _toCurrency.value.uppercase()
 
+        //trying to see if the rate is on the list to avoid calling API
         val localRates = (_exchangeRateUiState.value as? ExchangeRateUiState.Success)?.rates
         val matched = localRates?.find { it.from == from && it.to == to }
 
         if (matched != null) {
-            _conversionRate.value = matched.rate.toPlainString()
+            _conversionRate.value = matched.rate.setScale(3, java.math.RoundingMode.HALF_UP).toPlainString()
             return
         }
 
@@ -127,7 +128,7 @@ class ExchangeRateViewModel : ViewModel() {
                 if (response.isSuccessful) {
                     val body = response.body() as? Map<*, *>
                     val rate = (body?.get("rate") as? Double)?.toBigDecimal()
-                    _conversionRate.value = rate?.toPlainString() ?: "?"
+                    _conversionRate.value = rate?.setScale(3, java.math.RoundingMode.HALF_UP)?.toPlainString() ?: "?"
                 } else {
                     _conversionRate.value = "?"
                 }
@@ -154,17 +155,16 @@ class ExchangeRateViewModel : ViewModel() {
         }
     }
 
-    private fun maybeCalculateRate() {
+    private fun validateCurrency() {
         val from = _fromCurrency.value.uppercase()
         val to = _toCurrency.value.uppercase()
 
-        // skip if not valid
         if (from.length != 3 || to.length != 3 || from == to) {
             _conversionRate.value = "?"
             return
         }
 
-        calculateRate() // safe to run now
+        calculateRate()
     }
 
     fun isValidCurrency(code: String): Boolean {
