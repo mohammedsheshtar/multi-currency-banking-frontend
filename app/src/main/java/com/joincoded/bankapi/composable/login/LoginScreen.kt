@@ -1,4 +1,4 @@
-package com.joincoded.bankapi.login
+package com.joincoded.bankapi.composable.login
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
