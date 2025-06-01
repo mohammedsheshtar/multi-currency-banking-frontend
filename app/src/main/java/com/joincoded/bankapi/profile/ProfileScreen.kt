@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Person // Placeholder for crown icon
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -30,6 +30,7 @@ fun ProfileScreen(
     )
     val cardColor = Color(0xFF2C2C2E)
     val textWhite = Color.White
+    val pointsColor = Color(0xFF9A6AFF)
 
     Box(
         modifier = Modifier
@@ -112,7 +113,7 @@ fun ProfileScreen(
                     .padding(bottom = 8.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Person, // Replace with crown
+                    imageVector = Icons.Filled.Person,
                     contentDescription = "Personal Info Icon",
                     tint = Color.White,
                     modifier = Modifier.size(20.dp)
@@ -187,14 +188,13 @@ fun ProfileScreen(
                                         )
                                     )
                                 )
-
                             }
                         }
 
                         Column(horizontalAlignment = Alignment.End) {
                             Text(
                                 text = "Points",
-                                color = Color.White,
+                                color = pointsColor,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.ExtraBold
                             )
