@@ -208,6 +208,5 @@ fun LoginScreen(
             }
 
         }
-
     }
 }
