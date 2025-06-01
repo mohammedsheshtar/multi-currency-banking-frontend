@@ -69,7 +69,7 @@ fun RegistrationScreen(
                 )
             )
         }
-            Column(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp),
