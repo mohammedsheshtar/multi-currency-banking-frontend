@@ -126,7 +126,7 @@ fun ProfileScreen(
                     color = textWhite
                 )
             }
-
+//test
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     InfoCard("First Name", "Zainab", Modifier.weight(1f))
