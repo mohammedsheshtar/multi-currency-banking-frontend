@@ -1,22 +1,30 @@
 package com.joincoded.bankapi.login
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.joincoded.bankapi.R
 
 @Composable
 fun LoginScreen(
@@ -31,6 +39,18 @@ fun LoginScreen(
     val neonPurple = Color(0xFFB297E7)
     val darkBackground = Brush.verticalGradient(
         colors = listOf(Color(0xFF1C1C1E), Color(0xFFA594C7), Color(0xFF1C1C1E))
+    )
+    val gradientBrush = Brush.linearGradient(
+        colors = listOf(Color(0xFFB297E7), Color(0xFF8A2BE2)),
+        start = Offset(0f, 0f),
+        end = Offset(400f, 400f)
+    )
+    val fieldColors = TextFieldDefaults.colors(
+        focusedContainerColor = Color(0xFF323232),
+        unfocusedContainerColor = Color(0xFF323232),
+        focusedIndicatorColor = neonPurple,
+        unfocusedIndicatorColor = Color.White.copy(alpha = 0.5f),
+        cursorColor = neonPurple
     )
 
     MaterialTheme(
@@ -53,19 +73,19 @@ fun LoginScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxSize()
             ) {
-                Spacer(modifier = Modifier.height(100.dp))
+                Spacer(modifier = Modifier.height(150.dp)) // Moved "Welcome Back!" lower
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
                         .background(Color.Black.copy(alpha = 0.3f))
                         .padding(horizontal = 24.dp, vertical = 12.dp)
                 ) {
-                    Text(
+                    BasicText(
                         text = "Welcome Back!",
                         style = TextStyle(
+                            brush = gradientBrush,
                             fontSize = 32.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = neonPurple
+                            fontWeight = FontWeight.ExtraBold
                         )
                     )
                 }
@@ -90,35 +110,29 @@ fun LoginScreen(
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        OutlinedTextField(
+                        TextField(
                             value = email,
                             onValueChange = { email = it },
                             label = { Text("Email address", color = Color.White) },
                             singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color(0xFF323232),
-                                unfocusedContainerColor = Color(0xFF323232),
-                                focusedIndicatorColor = neonPurple,
-                                unfocusedIndicatorColor = Color.White.copy(alpha = 0.5f),
-                                cursorColor = neonPurple
-                            )
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(30.dp)),
+                            colors = fieldColors,
+                            shape = RoundedCornerShape(30.dp)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        OutlinedTextField(
+                        TextField(
                             value = password,
                             onValueChange = { password = it },
                             label = { Text("Password", color = Color.White) },
                             singleLine = true,
                             visualTransformation = PasswordVisualTransformation(),
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color(0xFF323232),
-                                unfocusedContainerColor = Color(0xFF323232),
-                                focusedIndicatorColor = neonPurple,
-                                unfocusedIndicatorColor = Color.White.copy(alpha = 0.5f),
-                                cursorColor = neonPurple
-                            )
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(30.dp)),
+                            colors = fieldColors,
+                            shape = RoundedCornerShape(30.dp)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         TextButton(onClick = onForgotPasswordClick) {
@@ -143,20 +157,57 @@ fun LoginScreen(
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(20.dp)
+                    .padding(bottom = 50.dp),
+                horizontalArrangement = Arrangement.spacedBy(25.dp)
             ) {
-                repeat(3) {
-                    IconButton(onClick = { onSocialClick("social$it") }) {
-                        Box(
-                            modifier = Modifier
-                                .size(60.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.2f))
-                        )
-                    }
+                Box(
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.2f))
+                        .clickable { onSocialClick("google") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.google),
+                        contentDescription = "Google Sign-In",
+                        tint = Color.White,
+                        modifier = Modifier.size(25.dp)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.2f))
+                        .clickable { onSocialClick("email") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Email,
+                        contentDescription = "Email Sign-In",
+                        tint = Color.White,
+                        modifier = Modifier.size(25.dp)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.2f))
+                        .clickable { onSocialClick("phone") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Phone,
+                        contentDescription = "Phone Sign-In",
+                        tint = Color.White,
+                        modifier = Modifier.size(25.dp)
+                    )
                 }
             }
+
         }
+
     }
 }
