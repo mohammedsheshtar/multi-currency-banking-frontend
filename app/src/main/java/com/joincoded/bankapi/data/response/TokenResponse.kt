@@ -15,7 +15,7 @@ data class ListAccountResponse(
     val balance: BigDecimal,
     val accountNumber: String,
     val accountType: String,
-    val createdAt: LocalDateTime,
+    val createdAt: String,
     val countryCode: String,
     val symbol: String
 )

@@ -18,7 +18,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHost
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.joincoded.bankapi.composable.HomePage
 import com.joincoded.bankapi.ui.theme.BankAPITheme
 
 class MainActivity : ComponentActivity() {
@@ -26,44 +28,67 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             BankAPITheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-
+                    val navController = rememberNavController()
+                    NavHost(
+                        navController = navController,
+                        startDestination = "homeScreen"
+                    ) {
+                        composable("homeScreen") {
+                            HomePage(navController = navController)
+                        }
+                    }
                 }
             }
         }
     }
 }
 
+//class MainActivity : ComponentActivity() {
+//    override fun onCreate(savedInstanceState: Bundle?) {
+//        super.onCreate(savedInstanceState)
+//        setContent {
+//            BankAPITheme {
+//                Surface(
+//                    modifier = Modifier.fillMaxSize(),
+//                    color = MaterialTheme.colorScheme.background
+//                ) {
+//                    AppNavigator()
+//                }
+//            }
+//        }
+//    }
+//}
+
 enum class NavRoutes(val value: String) {
-    NAV_ROUTE_EXCHANGE_RATE_SCREEN("exchangeRateScreen"),
-    NAV_ROUTE_HOME_SCREEN("homeScreen"),
     NAV_ROUTE_LOGIN_SCREEN("loginScreen"),
+    NAV_ROUTE_HOME_SCREEN("homeScreen"),
+    NAV_ROUTE_EXCHANGE_RATE_SCREEN("exchangeRateScreen"),
     NAV_ROUTE_REGISTRATION_SCREEN("registrationScreen"),
     NAV_ROUTE_PROFILE_SCREEN("profileScreen"),
     NAV_ROUTE_SHOP_SCREEN("shopScreen"),
-    NAV_ROUTE_SHOP_HISTORY("shopHistory"),
-
-
-
+    NAV_ROUTE_SHOP_HISTORY("shopHistory")
 }
 
 @Composable
 fun AppNavigator(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
-    startDestination: String = NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value
+    startDestination: String = NavRoutes.NAV_ROUTE_HOME_SCREEN.value
 ) {
-
     NavHost(
         modifier = modifier,
         navController = navController,
         startDestination = startDestination
     ) {
-
+        composable(NavRoutes.NAV_ROUTE_HOME_SCREEN.value) {
+            HomePage(navController = navController)
+        }
     }
 }
+
+
 
