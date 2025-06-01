@@ -24,16 +24,22 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.joincoded.bankapi.R
+import com.joincoded.bankapi.viewmodel.AuthViewModel
 
 @Composable
 fun LoginScreen(
-    onLoginClick: (String, String) -> Unit,
+    navController: NavController,
     onRegisterClick: () -> Unit,
     onForgotPasswordClick: () -> Unit,
     onSocialClick: (String) -> Unit
 ) {
-    var email by remember { mutableStateOf("") }
+    val authViewModel: AuthViewModel = viewModel()
+    val authMessage by authViewModel.authMessage.collectAsState()
+
+    var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
     val neonPurple = Color(0xFFB297E7)
@@ -73,7 +79,7 @@ fun LoginScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxSize()
             ) {
-                Spacer(modifier = Modifier.height(150.dp)) // Moved "Welcome Back!" lower
+                Spacer(modifier = Modifier.height(120.dp))
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
@@ -111,9 +117,9 @@ fun LoginScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         TextField(
-                            value = email,
-                            onValueChange = { email = it },
-                            label = { Text("Email address", color = Color.White) },
+                            value = username,
+                            onValueChange = { username = it },
+                            label = { Text("Username", color = Color.White) },
                             singleLine = true,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -142,12 +148,19 @@ fun LoginScreen(
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
-                    onClick = { onLoginClick(email, password) },
+                    onClick = { authViewModel.login(username, password) },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
                 ) {
                     Text("Sign In", color = neonPurple)
                 }
+
+                Text(
+                    text = authMessage,
+                    color = Color.White,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+
                 Spacer(modifier = Modifier.height(8.dp))
                 TextButton(onClick = onRegisterClick) {
                     Text("Don't have an account? Sign Up", color = neonPurple, textDecoration = TextDecoration.Underline)
@@ -206,8 +219,6 @@ fun LoginScreen(
                     )
                 }
             }
-
         }
-
     }
 }

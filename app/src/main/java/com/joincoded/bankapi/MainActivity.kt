@@ -58,9 +58,7 @@ fun AppNavigator(
     ) {
         composable(NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value) {
             LoginScreen(
-                onLoginClick = { email, password ->
-                    println("Login clicked: $email, $password")
-                },
+                navController = navController,
                 onRegisterClick = {
                     navController.navigate(NavRoutes.NAV_ROUTE_REGISTRATION_SCREEN.value)
                 },
@@ -72,6 +70,7 @@ fun AppNavigator(
                 }
             )
         }
+
         composable(NavRoutes.NAV_ROUTE_REGISTRATION_SCREEN.value) {
             RegistrationScreen(
                 onRegisterClick = { fullName, email, password, confirmPassword, phone, nationalId, address ->
