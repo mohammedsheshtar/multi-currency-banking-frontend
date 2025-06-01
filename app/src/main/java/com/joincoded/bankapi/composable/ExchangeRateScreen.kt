@@ -15,6 +15,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.joincoded.bankapi.viewmodel.ExchangeRateViewModel
 import com.joincoded.bankapi.viewmodel.ExchangeRateUiState
 import kotlinx.coroutines.delay
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+
 
 @Composable
 fun ExchangeRateScreen(
@@ -25,6 +32,13 @@ fun ExchangeRateScreen(
     val exchangeRateUiState by viewModel.exchangeRateUiState.collectAsState()
     val conversionRate by viewModel.conversionRate.collectAsState()
 
+    val animatedRate by animateFloatAsState(
+        targetValue = conversionRate?.toFloatOrNull() ?: 0f,
+        animationSpec = tween(durationMillis = 450),
+        label = "AnimatedRate"
+    )
+
+
     LaunchedEffect(Unit) {
         viewModel.setFromCurrency(viewModel.fromCurrency.value)
         viewModel.setToCurrency(viewModel.toCurrency.value)
@@ -33,7 +47,8 @@ fun ExchangeRateScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp)
+            .animateContentSize(),
         verticalArrangement = Arrangement.Top
     ) {
         Spacer(modifier = Modifier.height(32.dp))
@@ -106,27 +121,43 @@ fun ExchangeRateScreen(
                 }
 
                 else -> {
-                    Row(
-                        modifier = Modifier.align(Alignment.CenterHorizontally),
-                        verticalAlignment = Alignment.CenterVertically
+                    val showConversion = remember(fromNormalized, toNormalized, conversionRate) {
+                        conversionRate != "?" &&
+                                fromNormalized != toNormalized &&
+                                viewModel.isValidCurrency(fromNormalized) &&
+                                viewModel.isValidCurrency(toNormalized)
+                    }
+
+                    AnimatedVisibility(
+                        visible = showConversion,
+                        enter = fadeIn() + slideInVertically(initialOffsetY = { +80 }),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp)
                     ) {
-                        Text(
-                            text = "Conversion: 1 $fromCurrency",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Icon(
-                            imageVector = Icons.Filled.ArrowForward,
-                            contentDescription = "arrow",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "${conversionRate ?: "?"} $toCurrency",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        Row(
+                            modifier = Modifier.align(Alignment.CenterHorizontally),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = "1 $fromCurrency",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(
+                                imageVector = Icons.Filled.ArrowForward,
+                                contentDescription = "arrow",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = String.format("%.3f", animatedRate) + " $toCurrency",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
             }
