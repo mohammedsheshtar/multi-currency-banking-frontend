@@ -49,3 +49,8 @@ data class CreateUserDTO(
     val username: String,
     val password: String
 )
+
+data class ConversionRateRequest(
+    val from: String,
+    val to: String
+)
