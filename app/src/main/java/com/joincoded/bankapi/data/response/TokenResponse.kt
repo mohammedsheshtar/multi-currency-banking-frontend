@@ -104,3 +104,8 @@ data class TransactionHistoryResponse(
     val transactionType: String,
     val conversionRate: BigDecimal?
 )
+
+data class ApiResponse(
+    val success: Boolean,
+    val message: String
+)

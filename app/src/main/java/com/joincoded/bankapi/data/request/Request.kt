@@ -41,7 +41,7 @@ data class WithdrawRequest(
 data class TransferRequest(
     val sourceAccount: String,
     val destinationAccount: String,
-    val amount: BigDecimal,
+    val amount: String,
     val countryCode: String
 )
 
