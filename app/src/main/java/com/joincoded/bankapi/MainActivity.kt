@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        ExchangeRateScreen()
+                        AppNavigator()
                     }
                 }
             }
