@@ -76,4 +76,12 @@ object RetrofitHelper {
             .build()
             .create(ConversionRateApiService::class.java)
     }
+
+    val CurrenciesApi: CurrenciesApiService by lazy {
+        Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(CurrenciesApiService::class.java)
+    }
 }

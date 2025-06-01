@@ -11,7 +11,9 @@ import com.joincoded.bankapi.data.request.KYCRequest
 import com.joincoded.bankapi.data.request.TransferRequest
 import com.joincoded.bankapi.data.request.WithdrawRequest
 import com.joincoded.bankapi.data.response.AuthenticationResponse
+import com.joincoded.bankapi.data.response.ConversionRateResponse
 import com.joincoded.bankapi.data.response.CreateAccountResponse
+import com.joincoded.bankapi.data.response.CurrencyResponse
 import com.joincoded.bankapi.data.response.ListAccountResponse
 import com.joincoded.bankapi.data.response.ListMembershipResponse
 import com.joincoded.bankapi.data.response.TokenResponse
@@ -23,6 +25,7 @@ import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface BankApiService {
 
@@ -50,7 +53,7 @@ interface AccountApiService {
 }
 
 interface AuthenticationApiService {
-    @POST("api/v1/authentication/login")
+    @POST("authentication/api/v1/authentication/login")
     suspend fun login(@Body authRequest: AuthenticationRequest): Response<AuthenticationResponse>
 }
 
@@ -109,10 +112,16 @@ interface UserApiService {
 }
 
 interface ConversionRateApiService {
-    @GET
-    suspend fun getAllRates(@Header(Constants.authorization) token: String?): Response<*>
+    @GET("api/v1/conversion/rates")
+    suspend fun getAllRates(@Header(Constants.authorization) token: String?): Response<List<ConversionRateResponse>>
 
-    @GET
+    @GET("api/v1/conversion/rate")
     suspend fun getConversionRate(@Header(Constants.authorization) token: String?,
-                                  @Body request: ConversionRateRequest): Response<*>
+                                  @Query("from") from: String,
+                                  @Query("to") to: String): Response<*>
+}
+
+interface CurrenciesApiService {
+    @GET("/api/v1/currencies")
+    suspend fun getAllCurrencies(@Header(Constants.authorization) token: String?): Response<List<CurrencyResponse>>
 }

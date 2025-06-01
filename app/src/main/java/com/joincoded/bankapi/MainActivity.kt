@@ -4,7 +4,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -12,6 +14,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.joincoded.bankapi.composable.ExchangeRateScreen
 import com.joincoded.bankapi.login.LoginScreen
 import com.joincoded.bankapi.login.RegistrationScreen
 import com.joincoded.bankapi.profile.ProfileScreen
@@ -22,11 +25,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             BankAPITheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    AppNavigator()
+                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    Surface(
+                        modifier = Modifier.padding(innerPadding),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        ExchangeRateScreen()
+                    }
                 }
             }
         }
