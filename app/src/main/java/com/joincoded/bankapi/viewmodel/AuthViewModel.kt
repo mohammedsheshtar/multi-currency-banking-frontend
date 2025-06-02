@@ -19,18 +19,27 @@ class AuthViewModel : ViewModel() {
     private val _authMessage = MutableStateFlow<String>("")
     val authMessage: StateFlow<String> get() = _authMessage
 
+    private val _token = MutableStateFlow<String?>(null)
+    val token: StateFlow<String?> get() = _token
+
+    private val _isLoggedIn = MutableStateFlow(false)
+    val isLoggedIn: StateFlow<Boolean> get() = _isLoggedIn
+
     fun login(username: String, password: String) {
         viewModelScope.launch {
             try {
                 val response = authService.login(AuthenticationRequest(username, password))
                 if (response.isSuccessful) {
+                    _token.value = response.body()?.token
                     _authMessage.value = "Login successful!"
-                    // You can also extract the token from response.body()?.token
+                    _isLoggedIn.value = true
                 } else {
                     _authMessage.value = "Login failed: ${response.message()}"
+                    _isLoggedIn.value = false
                 }
             } catch (e: Exception) {
                 _authMessage.value = "Login error: ${e.localizedMessage}"
+                _isLoggedIn.value = false
             }
         }
     }

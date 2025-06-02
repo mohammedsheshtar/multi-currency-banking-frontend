@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.joincoded.bankapi.NavRoutes
 import com.joincoded.bankapi.R
 import com.joincoded.bankapi.viewmodel.AuthViewModel
 
@@ -38,9 +39,20 @@ fun LoginScreen(
 ) {
     val authViewModel: AuthViewModel = viewModel()
     val authMessage by authViewModel.authMessage.collectAsState()
+    val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
+    val token by authViewModel.token.collectAsState()
 
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+
+    if (isLoggedIn && token != null) {
+        LaunchedEffect(token) {
+            navController.navigate("${NavRoutes.NAV_ROUTE_PROFILE_SCREEN.value}/$token") {
+                popUpTo(NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value) { inclusive = true }
+            }
+        }
+    }
+
 
     val neonPurple = Color(0xFFB297E7)
     val darkBackground = Brush.verticalGradient(

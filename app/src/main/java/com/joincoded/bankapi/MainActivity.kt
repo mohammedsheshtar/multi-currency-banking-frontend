@@ -15,8 +15,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.joincoded.bankapi.composable.ExchangeRateScreen
-import com.joincoded.bankapi.login.LoginScreen
-import com.joincoded.bankapi.login.RegistrationScreen
+import com.joincoded.bankapi.composable.LoginScreen
+import com.joincoded.bankapi.composable.RegistrationScreen
 import com.joincoded.bankapi.profile.ProfileScreen
 import com.joincoded.bankapi.ui.theme.BankAPITheme
 
@@ -47,28 +47,20 @@ enum class NavRoutes(val value: String) {
     NAV_ROUTE_SHOP_SCREEN("shopScreen"),
     NAV_ROUTE_SHOP_HISTORY("shopHistory")
 }
-
 @Composable
 fun AppNavigator(
     navController: NavHostController = rememberNavController(),
     startDestination: String = NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value
 ) {
-    NavHost(
-        navController = navController,
-        startDestination = startDestination
-    ) {
+    NavHost(navController = navController, startDestination = startDestination) {
         composable(NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value) {
             LoginScreen(
                 navController = navController,
                 onRegisterClick = {
                     navController.navigate(NavRoutes.NAV_ROUTE_REGISTRATION_SCREEN.value)
                 },
-                onForgotPasswordClick = {
-                    println("Forgot password clicked")
-                },
-                onSocialClick = { platform ->
-                    println("Social clicked: $platform")
-                }
+                onForgotPasswordClick = { println("Forgot password clicked") },
+                onSocialClick = { platform -> println("Social clicked: $platform") }
             )
         }
 
@@ -76,9 +68,9 @@ fun AppNavigator(
             RegistrationScreen(navController = navController)
         }
 
-        composable(NavRoutes.NAV_ROUTE_PROFILE_SCREEN.value) {
-            ProfileScreen()
+        composable("${NavRoutes.NAV_ROUTE_PROFILE_SCREEN.value}/{token}") { backStackEntry ->
+            val token = backStackEntry.arguments?.getString("token") ?: ""
+
         }
     }
 }
-

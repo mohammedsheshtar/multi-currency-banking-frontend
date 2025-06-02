@@ -53,7 +53,7 @@ interface AccountApiService {
 }
 
 interface AuthenticationApiService {
-    @POST("authentication/api/v1/authenticaation/login")
+    @POST("authentication/api/v1/authentication/login")
     suspend fun login(@Body authRequest: AuthenticationRequest): Response<AuthenticationResponse>
 }
 
