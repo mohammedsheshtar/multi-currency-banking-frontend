@@ -101,10 +101,10 @@ class ExchangeRateViewModel : ViewModel() {
                 if (response.isSuccessful) {
                     val rates = response.body()
                     if (rates != null) {
-                        _exchangeRateUiState.value = ExchangeRateUiState.Success(rates.take(30))
+                        _exchangeRateUiState.value = ExchangeRateUiState.Success(rates ?: emptyList())
                         calculateRate()
                     }
-                    _exchangeRateUiState.value = ExchangeRateUiState.Success(rates?.take(30) ?: emptyList())
+                    _exchangeRateUiState.value = ExchangeRateUiState.Success(rates ?: emptyList())
                     calculateRate()
                 } else {
                     _exchangeRateUiState.value = ExchangeRateUiState.Error("Failed to fetch rates.")
