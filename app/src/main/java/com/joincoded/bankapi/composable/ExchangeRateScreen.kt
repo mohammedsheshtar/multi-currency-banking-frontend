@@ -1,5 +1,11 @@
 package com.joincoded.bankapi.composable
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,13 +21,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.joincoded.bankapi.viewmodel.ExchangeRateViewModel
 import com.joincoded.bankapi.viewmodel.ExchangeRateUiState
 import kotlinx.coroutines.delay
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
-
 
 @Composable
 fun ExchangeRateScreen(
@@ -31,6 +30,8 @@ fun ExchangeRateScreen(
     val toCurrency by viewModel.toCurrency.collectAsState()
     val exchangeRateUiState by viewModel.exchangeRateUiState.collectAsState()
     val conversionRate by viewModel.conversionRate.collectAsState()
+    val amount by viewModel.amount.collectAsState()
+    var rawAmount by remember { mutableStateOf(amount) }
 
     val animatedRate by animateFloatAsState(
         targetValue = conversionRate?.toFloatOrNull() ?: 0f,
@@ -38,10 +39,14 @@ fun ExchangeRateScreen(
         label = "AnimatedRate"
     )
 
+    LaunchedEffect(rawAmount) {
+        delay(250)
+        viewModel.setAmount(rawAmount)
+    }
 
     LaunchedEffect(Unit) {
-        viewModel.setFromCurrency(viewModel.fromCurrency.value)
-        viewModel.setToCurrency(viewModel.toCurrency.value)
+        viewModel.setFromCurrency(fromCurrency)
+        viewModel.setToCurrency(toCurrency)
     }
 
     Column(
@@ -53,28 +58,17 @@ fun ExchangeRateScreen(
     ) {
         Spacer(modifier = Modifier.height(32.dp))
 
+        // Currency inputs
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             var rawFrom by remember { mutableStateOf(fromCurrency) }
+            var rawTo by remember { mutableStateOf(toCurrency) }
 
             LaunchedEffect(rawFrom) {
                 if (rawFrom.length == 3) {
-                    delay(250) // debounce delay
+                    delay(250)
                     viewModel.setFromCurrency(rawFrom.uppercase())
                 }
             }
-
-            OutlinedTextField(
-                value = rawFrom.uppercase(),
-                onValueChange = {
-                    if (it.length <= 3) rawFrom = it.uppercase()
-                },
-                label = { Text("From") },
-                modifier = Modifier.weight(1f),
-                singleLine = true,
-                shape = RoundedCornerShape(50)
-            )
-
-            var rawTo by remember { mutableStateOf(toCurrency) }
 
             LaunchedEffect(rawTo) {
                 if (rawTo.length == 3) {
@@ -84,10 +78,17 @@ fun ExchangeRateScreen(
             }
 
             OutlinedTextField(
+                value = rawFrom.uppercase(),
+                onValueChange = { if (it.length <= 3) rawFrom = it.uppercase() },
+                label = { Text("From") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                shape = RoundedCornerShape(50)
+            )
+
+            OutlinedTextField(
                 value = rawTo.uppercase(),
-                onValueChange = {
-                    if (it.length <= 3) rawTo = it.uppercase()
-                },
+                onValueChange = { if (it.length <= 3) rawTo = it.uppercase() },
                 label = { Text("To") },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
@@ -95,10 +96,26 @@ fun ExchangeRateScreen(
             )
         }
 
+        // Amount input
+        OutlinedTextField(
+            value = rawAmount,
+            onValueChange = {
+                if (it.length <= 8 && it.matches(Regex("^\\d*\\.?\\d*\$")))
+                    rawAmount = it
+            },
+            label = { Text("Amount") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            singleLine = true,
+            shape = RoundedCornerShape(50)
+        )
+
         Spacer(modifier = Modifier.height(16.dp))
 
         val fromNormalized = fromCurrency.uppercase()
         val toNormalized = toCurrency.uppercase()
+        val isAmountValid = amount.isNotBlank() && amount.toFloatOrNull() != null
 
         if (fromNormalized.length == 3 && toNormalized.length == 3) {
             when {
@@ -121,9 +138,10 @@ fun ExchangeRateScreen(
                 }
 
                 else -> {
-                    val showConversion = remember(fromNormalized, toNormalized, conversionRate) {
+                    val showConversion = remember(fromNormalized, toNormalized, conversionRate, isAmountValid) {
                         conversionRate != "?" &&
                                 fromNormalized != toNormalized &&
+                                isAmountValid &&
                                 viewModel.isValidCurrency(fromNormalized) &&
                                 viewModel.isValidCurrency(toNormalized)
                     }
@@ -141,7 +159,7 @@ fun ExchangeRateScreen(
                             horizontalArrangement = Arrangement.Center
                         ) {
                             Text(
-                                text = "1 $fromCurrency",
+                                text = "$amount $fromCurrency",
                                 style = MaterialTheme.typography.titleLarge,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -165,6 +183,7 @@ fun ExchangeRateScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
+        // Exchange rate list
         when (exchangeRateUiState) {
             is ExchangeRateUiState.Loading -> {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))

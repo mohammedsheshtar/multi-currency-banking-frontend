@@ -1,4 +1,4 @@
-package com.joincoded.bankapi.profile
+package com.joincoded.bankapi.composable.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*

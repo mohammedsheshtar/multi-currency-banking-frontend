@@ -17,7 +17,7 @@ import androidx.navigation.compose.rememberNavController
 import com.joincoded.bankapi.composable.ExchangeRateScreen
 import com.joincoded.bankapi.composable.login.LoginScreen
 import com.joincoded.bankapi.composable.login.RegistrationScreen
-import com.joincoded.bankapi.profile.ProfileScreen
+import com.joincoded.bankapi.composable.profile.ProfileScreen
 import com.joincoded.bankapi.ui.theme.BankAPITheme
 
 class MainActivity : ComponentActivity() {
@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        AppNavigator()
+                        ExchangeRateScreen()
                     }
                 }
             }

@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.math.RoundingMode
 
 sealed class ExchangeRateUiState {
     data object Loading : ExchangeRateUiState()
@@ -25,7 +26,6 @@ class ExchangeRateViewModel : ViewModel() {
     private val _toCurrency = MutableStateFlow("")
     val toCurrency: StateFlow<String> = _toCurrency.asStateFlow()
 
-
     private val _exchangeRateUiState = MutableStateFlow<ExchangeRateUiState>(ExchangeRateUiState.Loading)
     val exchangeRateUiState = _exchangeRateUiState.asStateFlow()
 
@@ -34,6 +34,9 @@ class ExchangeRateViewModel : ViewModel() {
 
     private val _conversionRate = MutableStateFlow<String?>("?")
     val conversionRate: StateFlow<String?> = _conversionRate.asStateFlow()
+
+    private val _amount = MutableStateFlow("")
+    val amount: StateFlow<String> = _amount.asStateFlow()
 
     private var token: String? = null
 
@@ -51,6 +54,10 @@ class ExchangeRateViewModel : ViewModel() {
         validateCurrency()
     }
 
+    fun setAmount(value: String) {
+        _amount.value = value
+        validateCurrency()
+    }
 
     private fun loginAndFetch() {
         viewModelScope.launch {
@@ -116,9 +123,10 @@ class ExchangeRateViewModel : ViewModel() {
         val localRates = (_exchangeRateUiState.value as? ExchangeRateUiState.Success)?.rates
         val matched = localRates?.find { it.from == from && it.to == to }
 
+        val amountValue = _amount.value.toFloatOrNull() ?: return
+
         if (matched != null) {
-            _conversionRate.value = matched.rate.setScale(3, java.math.RoundingMode.HALF_UP).toPlainString()
-            return
+            _conversionRate.value = (matched.rate * amountValue.toBigDecimal()).setScale(3, RoundingMode.HALF_UP).toPlainString()
         }
 
         // fallback to backend
@@ -128,7 +136,9 @@ class ExchangeRateViewModel : ViewModel() {
                 if (response.isSuccessful) {
                     val body = response.body() as? Map<*, *>
                     val rate = (body?.get("rate") as? Double)?.toBigDecimal()
-                    _conversionRate.value = rate?.setScale(3, java.math.RoundingMode.HALF_UP)?.toPlainString() ?: "?"
+                    val finalAmount = rate?.times(amountValue.toBigDecimal())
+                    _conversionRate.value = finalAmount?.setScale(3, RoundingMode.HALF_UP)?.toPlainString() ?: "?"
+
                 } else {
                     _conversionRate.value = "?"
                 }
@@ -170,6 +180,4 @@ class ExchangeRateViewModel : ViewModel() {
     fun isValidCurrency(code: String): Boolean {
         return currencies.value.any { it.countryCode.equals(code, ignoreCase = true) }
     }
-
-
 }
