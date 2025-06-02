@@ -45,6 +45,12 @@ data class TransferRequest(
     val countryCode: String
 )
 
+data class TransferLinkRequest(
+    val accountNumber: String,
+    val amount: Double,
+    val currencyCode: String
+)
+
 data class CreateUserDTO(
     val username: String,
     val password: String

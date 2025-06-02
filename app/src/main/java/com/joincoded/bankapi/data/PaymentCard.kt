@@ -6,7 +6,8 @@ import androidx.compose.runtime.mutableStateOf
 
 
 data class PaymentCard(
-    val id: String,
+    val accountId: Long,
+    val accountNumber: String,
     val balance: Double,
     val currency: String,
     val name: String,
@@ -15,7 +16,7 @@ data class PaymentCard(
     val expYear: String,
     val cvv: String,
     val type: String,
-    val background: String,
+    val background: String
 )
 //data class CardState(
 //    val card: PaymentCard,

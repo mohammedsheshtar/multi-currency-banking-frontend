@@ -119,7 +119,10 @@ fun AppNavigator(
                         } else {
                             FanCarouselView(
                                 cards = cards.map { it.card },
-                                modifier = Modifier.padding(padding)
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(top = padding.calculateTopPadding()),
+                                walletViewModel = walletViewModel
                             )
                         }
                     }

@@ -48,30 +48,55 @@ class TokenInterceptor(private val context: Context) : Interceptor {
         val originalRequest = chain.request()
         val token = TokenManager.getToken(context)
 
-        Log.d("TokenInterceptor", "Intercepting: ${originalRequest.url}")
-        Log.d("TokenInterceptor", "Token present: ${!token.isNullOrBlank()}")
+        Log.d("TokenInterceptor", """
+            🔄 Intercepting request:
+            - URL: ${originalRequest.url}
+            - Method: ${originalRequest.method}
+            - Path: ${originalRequest.url.encodedPath}
+            - Query: ${originalRequest.url.query}
+            - Token present: ${!token.isNullOrBlank()}
+        """.trimIndent())
+
         if (!token.isNullOrBlank()) {
             Log.d("TokenInterceptor", "Token first 20 chars: ${token.take(20)}...")
             Log.d("TokenInterceptor", "Full token: $token")
         }
 
+        // Remove any existing Authorization headers to prevent duplicates
+        val newRequestBuilder = originalRequest.newBuilder()
+        originalRequest.headers.forEach { (name, _) ->
+            if (name.equals("Authorization", ignoreCase = true)) {
+                Log.d("TokenInterceptor", "Removing existing Authorization header")
+                newRequestBuilder.removeHeader(name)
+            }
+        }
+
         val newRequest = if (!token.isNullOrBlank()) {
-            originalRequest.newBuilder()
+            // Add the token with Bearer prefix
+            newRequestBuilder
                 .addHeader("Authorization", "Bearer $token")
                 .build()
         } else {
-            originalRequest
+            newRequestBuilder.build()
         }
 
         // Log all request headers
-        Log.d("TokenInterceptor", "Request headers:")
-        newRequest.headers.forEach { (name, value) ->
-            Log.d("TokenInterceptor", "$name: $value")
-        }
+        Log.d("TokenInterceptor", """
+            📤 Request details:
+            - Final URL: ${newRequest.url}
+            - Headers: ${newRequest.headers.toMultimap()}
+        """.trimIndent())
 
         val response = chain.proceed(newRequest)
 
-        Log.d("TokenInterceptor", "Response code: ${response.code}")
+        Log.d("TokenInterceptor", """
+            📥 Response received:
+            - Code: ${response.code}
+            - Message: ${response.message}
+            - URL: ${response.request.url}
+            - Headers: ${response.headers.toMultimap()}
+        """.trimIndent())
+
         if (response.code == 401) {
             Log.w("TokenInterceptor", "Unauthorized – token may be expired.")
         } else if (response.code == 403) {

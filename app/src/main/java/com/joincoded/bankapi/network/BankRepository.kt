@@ -4,6 +4,9 @@ import android.util.Log
 import com.joincoded.bankapi.data.TransactionItem
 import com.joincoded.bankapi.data.request.TransferRequest
 import com.joincoded.bankapi.data.response.ListAccountResponse
+import com.joincoded.bankapi.data.response.TransactionHistoryResponse
+import java.util.*
+import java.time.format.DateTimeFormatter
 
 class BankRepository(
     private val accountApi: AccountApiService,
@@ -12,7 +15,7 @@ class BankRepository(
 ) {
 
     suspend fun getUserAccounts(): List<ListAccountResponse> {
-        val response = accountApi.listUserAccounts("Bearer ${tokenProvider()}")
+        val response = accountApi.listUserAccounts(tokenProvider())
         Log.d("BankRepo", "Accounts API status: ${response.code()}")
         Log.d("BankRepo", "Accounts API success: ${response.isSuccessful}")
         Log.d("BankRepo", "Accounts API body: ${response.body()}")
@@ -27,14 +30,24 @@ class BankRepository(
 
     suspend fun transfer(from: String, to: String, amount: String, currency: String): Boolean {
         val request = TransferRequest(from, to, amount, currency)
-        val response = transactionApi.transferAccounts("Bearer ${tokenProvider()}", request)
+        val response = transactionApi.transferAccounts(tokenProvider(), request)
         return response.isSuccessful
     }
 
-    suspend fun getTransactions(accountId: Int): List<TransactionItem> {
-        val response = transactionApi.getTransactionHistory("Bearer ${tokenProvider()}", accountId)
+    suspend fun getTransactions(accountId: String): List<TransactionItem> {
+        val response = transactionApi.getTransactionHistory(tokenProvider(), accountId)
         return if (response.isSuccessful) {
-            response.body() as List<TransactionItem> // cast or map
+            @Suppress("UNCHECKED_CAST")
+            val history = response.body() as? List<TransactionHistoryResponse> ?: emptyList()
+            history.map {
+                TransactionItem(
+                    id = UUID.randomUUID().toString(),
+                    title = it.transactionType,
+                    date = it.timeStamp.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
+                    amount = if (it.transactionType.lowercase() == "withdraw") "-${it.amount}" else "+${it.amount}",
+                    cardId = it.accountNumber
+                )
+            }
         } else {
             emptyList()
         }

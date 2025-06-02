@@ -106,7 +106,7 @@ fun WaveBottomNavBar(
         modifier = modifier
             .fillMaxWidth()
             .height(100.dp)
-            .shadow(8.dp, shape = MaterialTheme.shapes.medium, spotColor = Color(0x1A000000)),
+            .shadow(8.dp, shape = MaterialTheme.shapes.medium, spotColor = Color(0xFF000000)),
         contentAlignment = Alignment.TopCenter
     ) {
         // Draw background with dip
@@ -219,7 +219,7 @@ fun WaveBottomNavBar(
                                     .scale(scale)
                                     // COLOR FOR CIRCLE SHAPE
                                     .background(
-                                        if (isSelected || index == prevIndexRef.value) Color.White else Color.Transparent,
+                                        if (isSelected || index == prevIndexRef.value) Color(0xFF2C2C2E) else Color.Transparent,
                                         shape = CircleShape
                                     ),
                                 contentAlignment = Alignment.Center
@@ -278,7 +278,7 @@ fun DrawScope.drawWaveBackground(selectedX: Float, width: Float, height: Float) 
         lineTo(0f, height)
         close()
     }
-    drawPath(path, color = Color.White) // BAR COLOR
+    drawPath(path, color = Color(0xFF1A1A1D)) // Changed from Color.White to dark color
 }
 
 // Updated Model to work with composable icons while maintaining the same structure

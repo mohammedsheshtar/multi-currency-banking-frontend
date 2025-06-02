@@ -1,28 +1,28 @@
-package com.example.multicurrency_card.components
+package com.joincoded.bankapi.composable
 
-
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,29 +30,63 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-
-
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.joincoded.bankapi.R
+import com.joincoded.bankapi.ViewModel.WalletViewModel
 import com.joincoded.bankapi.composable.FilterOptionsButton
 import com.joincoded.bankapi.composable.PaymentCardView
 import com.joincoded.bankapi.data.PaymentCard
 import com.joincoded.bankapi.data.ServiceAction
 import com.joincoded.bankapi.data.TransactionItem
-
+import com.joincoded.bankapi.data.response.TransactionHistoryResponse
+import com.joincoded.bankapi.network.RetrofitHelper
+import com.joincoded.bankapi.utils.TokenManager
+import kotlinx.coroutines.launch
+import java.time.format.DateTimeFormatter
+import java.util.UUID
 
 @Composable
 fun FanCarouselFocusedView(
     card: PaymentCard,
     services: List<ServiceAction>,
     transactions: List<TransactionItem>,
+    onClose: () -> Unit,
     onSwipeOut: () -> Unit,
-    onClose: () -> Unit = {},
-    onTransferClick: () -> Unit
+    onTransferClick: () -> Unit,
+    walletViewModel: WalletViewModel,
+    modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    // Collect states from ViewModel
+    val walletTransactions = walletViewModel.transactions.collectAsStateWithLifecycle()
+    val isLoadingTransactions = walletViewModel.isLoadingTransactions.collectAsStateWithLifecycle()
+    val transactionError = walletViewModel.transactionError.collectAsStateWithLifecycle()
+
+    // Log the card details for debugging
+    Log.d("FanCarouselFocusedView", """
+        🎯 Card details:
+        - Account Number: ${card.accountNumber}
+        - Type: ${card.type}
+        - Currency: ${card.currency}
+    """.trimIndent())
+
+    // Fetch transactions when expanded or when card changes
+    LaunchedEffect(card.accountNumber, expanded) {
+        Log.d("FanCarouselFocusedView", "🔄 Fetching transactions for account: ${card.accountNumber}")
+        walletViewModel.fetchTransactionHistory(card.accountNumber, forceRefresh = expanded)
+    }
+
+    // Refresh transactions when returning from transfer screen
+    LaunchedEffect(Unit) {
+        Log.d("FanCarouselFocusedView", "🔄 Initial transaction fetch for account: ${card.accountNumber}")
+        walletViewModel.fetchTransactionHistory(card.accountNumber, forceRefresh = true)
+    }
 
     BackHandler(enabled = true) {
         onSwipeOut()
@@ -95,6 +129,7 @@ fun FanCarouselFocusedView(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // Service Actions Row
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -105,11 +140,7 @@ fun FanCarouselFocusedView(
                             .size(56.dp)
                             .clip(CircleShape)
                             .background(Color(0xFF1A1A1D))
-                            .clickable {
-                                if (service.label == "Transfer") {
-                                    onTransferClick()
-                                }
-                            },
+                            .clickable { service.onClick() },
                         contentAlignment = Alignment.Center
                     ) {
                         CompositionLocalProvider(LocalContentColor provides Color(0xFFB297E7)) {
@@ -119,7 +150,6 @@ fun FanCarouselFocusedView(
                         }
                     }
                 }
-
             }
         }
 
@@ -159,6 +189,7 @@ fun FanCarouselFocusedView(
                         FilterOptionsButton(
                             onFilterSelected = { selectedFilter ->
                                 println("Selected Filter: $selectedFilter")
+                                walletViewModel.fetchTransactionHistory(card.accountNumber, true)
                             }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -170,17 +201,31 @@ fun FanCarouselFocusedView(
                         )
                     }
 
-                    Icon(
-                        painter = painterResource(
-                            id = if (expanded)
-                                R.drawable.baseline_keyboard_double_arrow_down_24
-                            else
-                                R.drawable.baseline_keyboard_double_arrow_up_24
-                        ),
-                        contentDescription = "Toggle Sheet",
-                        tint = Color(0xFFB297E7),
-                        modifier = Modifier.size(24.dp)
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Add refresh button
+                        IconButton(
+                            onClick = { walletViewModel.fetchTransactionHistory(card.accountNumber, true) },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.baseline_refresh_24),
+                                contentDescription = "Refresh",
+                                tint = Color(0xFFB297E7)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            painter = painterResource(
+                                id = if (expanded)
+                                    R.drawable.baseline_keyboard_double_arrow_down_24
+                                else
+                                    R.drawable.baseline_keyboard_double_arrow_up_24
+                            ),
+                            contentDescription = "Toggle Sheet",
+                            tint = Color(0xFFB297E7),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -189,25 +234,97 @@ fun FanCarouselFocusedView(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(transactions) { tx ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color(0xFF1A1A1D), RoundedCornerShape(12.dp))
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(tx.title, color = Color.White)
-                                Text(tx.date, color = Color.Gray, fontSize = 12.sp)
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(
-                                    text = tx.amount,
-                                    color = if (tx.amount.startsWith("-")) Color(0xFFFF6F91) else Color(0xFF00BCD4)
+                    if (isLoadingTransactions.value) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    color = Color(0xFFB297E7),
+                                    modifier = Modifier.size(48.dp)
                                 )
-                                Text("Success", color = Color.Gray, fontSize = 12.sp)
+                            }
+                        }
+                    } else if (transactionError.value != null) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    transactionError.value ?: "Error loading transactions",
+                                    color = Color.Red,
+                                    fontSize = 16.sp
+                                )
+                            }
+                        }
+                    } else if (walletTransactions.value.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "No transactions found",
+                                    color = Color.Gray,
+                                    fontSize = 16.sp
+                                )
+                            }
+                        }
+                    } else {
+                        items(walletTransactions.value) { tx ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color(0xFF1A1A1D), RoundedCornerShape(12.dp))
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        tx.title,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 16.sp
+                                    )
+                                    Text(
+                                        tx.date,
+                                        color = Color.Gray,
+                                        fontSize = 12.sp
+                                    )
+                                    // Add account number if it's a transfer
+                                    if (tx.title.contains("Transfer", ignoreCase = true)) {
+                                        Text(
+                                            "Account: ${tx.cardId}",
+                                            color = Color.Gray,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(
+                                        text = "${tx.amount} ${card.currency}",
+                                        color = if (tx.amount.startsWith("-")) 
+                                            Color(0xFFFF6F91) 
+                                        else 
+                                            Color(0xFF00BCD4),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp
+                                    )
+                                    Text(
+                                        "Success",
+                                        color = Color.Gray,
+                                        fontSize = 12.sp
+                                    )
+                                }
                             }
                         }
                     }

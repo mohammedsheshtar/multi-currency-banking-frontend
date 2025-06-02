@@ -12,6 +12,7 @@ data class TokenResponse(val token: String?) {
 }
 
 data class ListAccountResponse(
+    val id: Long? = null,
     val balance: BigDecimal,
     val accountNumber: String,
     val accountType: String,
@@ -100,7 +101,7 @@ data class TransactionHistoryResponse(
     val requestedCurrency: String,
     val amount: BigDecimal,
     val status: String,
-    val timeStamp: LocalDateTime,
+    val timeStamp: String,
     val transactionType: String,
     val conversionRate: BigDecimal?
 )

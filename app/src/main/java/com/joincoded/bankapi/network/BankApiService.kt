@@ -11,9 +11,15 @@ import com.joincoded.bankapi.data.request.TransferRequest
 import com.joincoded.bankapi.data.request.WithdrawRequest
 import com.joincoded.bankapi.data.response.AuthenticationResponse
 import com.joincoded.bankapi.data.response.CreateAccountResponse
+import com.joincoded.bankapi.data.response.KYCResponse
 import com.joincoded.bankapi.data.response.ListAccountResponse
 import com.joincoded.bankapi.data.response.ListMembershipResponse
 import com.joincoded.bankapi.data.response.TokenResponse
+import com.joincoded.bankapi.data.response.UserSearchResponse
+import com.joincoded.bankapi.data.response.TransferLinkResponse
+import com.joincoded.bankapi.data.request.TransferLinkRequest
+import com.joincoded.bankapi.data.request.PaymentLinkRequest
+import com.joincoded.bankapi.data.response.PaymentLinkResponse
 import com.joincoded.bankapi.utils.Constants
 import retrofit2.Response
 import retrofit2.http.Body
@@ -22,6 +28,7 @@ import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface BankApiService {
 
@@ -33,20 +40,6 @@ interface BankApiService {
     suspend fun deposit(@Header(Constants.authorization) token: String?,
                         @Body amountChange: AmountChange
     ): Response<Unit>
-}
-
-interface AccountApiService {
-    @GET("api/v1/users/accounts")
-    suspend fun listUserAccounts(@Header("Authorization") token: String): Response<List<ListAccountResponse>>
-
-
-    @POST("api/v1/users/accounts")
-    suspend fun createAccount(@Header(Constants.authorization) token: String?,
-                              @Body request: CreateAccount): Response<*>
-
-    @POST("/api/v1/users/accounts/{accountNumber}")
-    suspend fun closeAccount(@Header(Constants.authorization) token: String?,
-                             @Path("accountNumber") accountNumber: String): Response<*>
 }
 
 interface AuthenticationApiService {
@@ -62,6 +55,12 @@ interface KycApiService {
     @POST("api/v1/users/kyc")
     suspend fun addOrUpdateMyKYC(@Header(Constants.authorization) token: String?,
                                  @Body request: KYCRequest): Response<*>?
+
+    @GET("api/v1/users/kyc/search")
+    suspend fun searchUserByKYC(
+        @Header(Constants.authorization) token: String?,
+        @Query("query") query: String
+    ): Response<KYCResponse>
 }
 
 interface MembershipApiService {
@@ -98,12 +97,42 @@ interface TransactionApiService {
     suspend fun transferAccounts(@Header(Constants.authorization) token: String?,
                                  @Body request: TransferRequest): Response<*>
 
-    @GET("api/v1/accounts/transactions/{accountId}")
+    @GET("api/v1/accounts/transactions/{accountNumber}")
     suspend fun getTransactionHistory(@Header(Constants.authorization) token: String?,
-                                      @Path("accountId") accountId: Int): Response<*>
+                                      @Path("accountNumber") accountNumber: String): Response<*>
+
+    @POST("api/v1/transfer-links/generate")
+    suspend fun generateTransferLink(
+        @Header(Constants.authorization) token: String?,
+        @Body request: TransferLinkRequest
+    ): Response<TransferLinkResponse>
+
+    @GET("api/v1/accounts/transfer-link/{linkId}")
+    suspend fun getTransferLink(
+        @Header(Constants.authorization) token: String?,
+        @Path("linkId") linkId: String
+    ): Response<TransferLinkResponse>
+
+    @POST("api/v1/accounts/transfer-link/{linkId}/accept")
+    suspend fun acceptTransferLink(
+        @Header(Constants.authorization) token: String?,
+        @Path("linkId") linkId: String
+    ): Response<Unit>
+
+    @POST("api/v1/transfer-links/generate-payment-link")
+    suspend fun generatePaymentLink(
+        @Header(Constants.authorization) token: String?,
+        @Body request: PaymentLinkRequest
+    ): Response<PaymentLinkResponse>
 }
 
 interface UserApiService {
     @POST("api/v1/authentication/register")
     suspend fun registerUser(@Body request: CreateUserDTO): Response<Any>
+
+    @GET("api/v1/users/search")
+    suspend fun searchUser(
+        @Header("Authorization") token: String,
+        @Query("query") query: String
+    ): Response<UserSearchResponse>
 }

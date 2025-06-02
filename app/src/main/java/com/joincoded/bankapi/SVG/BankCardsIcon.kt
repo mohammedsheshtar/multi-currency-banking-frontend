@@ -25,7 +25,7 @@ fun BankCardsIcon(modifier: Modifier = Modifier, color: Color = Color.Unspecifie
     ).apply {
         addPath(
             pathData = path,
-            fill = SolidColor(Color(0xFF292F33))
+            fill = SolidColor(color)
         )
     }.build()
 

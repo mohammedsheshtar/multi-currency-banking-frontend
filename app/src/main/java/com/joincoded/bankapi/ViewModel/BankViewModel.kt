@@ -7,7 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.joincoded.bankapi.data.request.AuthenticationRequest
-import com.joincoded.bankapi.data.request.CreateAccount
+import com.joincoded.bankapi.data.request.CreateAccountRequest
 import com.joincoded.bankapi.data.request.CreateUserDTO
 import com.joincoded.bankapi.data.request.DepositRequest
 import com.joincoded.bankapi.data.request.TransferRequest
@@ -80,10 +80,16 @@ class BankViewModel : ViewModel() {
         this.context = context.applicationContext
     }
 
-    fun createAccount(request: CreateAccount) {
+    fun createAccount(request: CreateAccountRequest) {
         viewModelScope.launch {
             try {
-                val response = accountApiService.createAccount(null, request)
+                val token = _token.value
+                if (token == null) {
+                    _errorMessage.value = "Authentication required - please login first"
+                    return@launch
+                }
+
+                val response = accountApiService.createAccount(token, request)
                 if (response.isSuccessful) {
                     _createAccountResponse.value = response.body() as? CreateAccountResponse
                 } else {

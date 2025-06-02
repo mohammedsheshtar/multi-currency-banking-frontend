@@ -1,4 +1,5 @@
-package com.example.multicurrency_card.SVG
+package com.joincoded.bankapi.SVG
+
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
@@ -12,27 +13,26 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun ShopFilledIcon(modifier: Modifier = Modifier, color: Color = Color.Unspecified) {
+fun AddCardRoundedIcon(modifier: Modifier = Modifier, color: Color = Color.Unspecified) {
     val path = PathParser().parsePathString(
-        "M7.5 7v-.5a4.5 4.5 0 0 1 9 0V7H19c.552 0 1 .449 1 1.007v12.001c0 1.1-.895 1.992-1.994 1.992H5.994A1.994 1.994 0 0 1 4 20.008v-12C4 7.45 4.445 7 5 7zM9 7h6v-.5a3 3 0 0 0-6 0zM7.5 7v4H9V7zM15 7v4h1.5V7z"
+        "M19.5 18.5H17q-.213 0-.356-.144t-.144-.357t.144-.356T17 17.5h2.5V15q0-.213.144-.356t.357-.144t.356.144t.143.356v2.5H23q.213 0 .356.144t.144.357t-.144.356T23 18.5h-2.5V21q0 .213-.144.356t-.357.144t-.356-.144T19.5 21zM4 11.192h16V8.808H4zM4.615 19q-.69 0-1.153-.462T3 17.384V6.616q0-.691.463-1.153T4.615 5h14.77q.69 0 1.152.463T21 6.616v5.076q0 .344-.232.576t-.576.232H19.5q-2.075 0-3.537 1.463T14.5 17.5v.692q0 .344-.232.576t-.576.232z"
     ).toNodes()
 
     val vector = ImageVector.Builder(
-        defaultWidth = 24.dp,
-        defaultHeight = 24.dp,
+        defaultWidth = 26.dp,
+        defaultHeight = 26.dp,
         viewportWidth = 24f,
         viewportHeight = 24f
     ).apply {
         addPath(
             pathData = path,
-            fill = SolidColor(color),
-            fillAlpha = 1.0f
+            fill = SolidColor(color)
         )
     }.build()
 
     Icon(
         painter = rememberVectorPainter(vector),
-        contentDescription = "Shop Filled Icon",
+        contentDescription = "Add Card Rounded Icon",
         modifier = modifier.size(48.dp),
         tint = Color.Unspecified
     )

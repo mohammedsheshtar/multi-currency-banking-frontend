@@ -18,6 +18,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.times
 import androidx.compose.ui.zIndex
 import com.joincoded.bankapi.data.CardState
 import com.joincoded.bankapi.data.PaymentCard
@@ -42,6 +43,12 @@ fun CardStack(
 ) {
     val visibleStates = if (focusedCard != null) listOf(focusedCard) else cardStates
 
+    var isFirstLoad by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        delay(100) // Small delay to ensure smooth animation
+        isFirstLoad = false
+    }
+
     val sortedVisibleCards = visibleStates.mapIndexed { index, state ->
         val centerIndex = 2
         val relativePos = index - centerIndex
@@ -49,11 +56,36 @@ fun CardStack(
     }.sortedBy { abs(it.third) }
 
     sortedVisibleCards.forEach { (index, state, relativePos) ->
+        val entryAnimation = remember { Animatable(0f) }
+        LaunchedEffect(Unit) {
+            if (isFirstLoad) {
+                delay(index * 100L) // Stagger the animations
+                entryAnimation.animateTo(
+                    targetValue = 1f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow,
+                        visibilityThreshold = null
+                    )
+                )
+            }
+        }
+
         val angle by animateFloatAsState(if (state == focusedCard) 0f else -relativePos * 18f)
         val offsetY by animateDpAsState(if (state == focusedCard) 0.dp else (relativePos * 64).dp)
         val rotationYAnim by animateFloatAsState(
             if (state.isFlipped.value && focusedCard == state) 180f else 0f,
             animationSpec = spring()
+        )
+
+        val entryOffsetX by animateDpAsState(
+            targetValue = 0.dp,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow,
+                visibilityThreshold = null
+            ),
+            label = "entryOffsetX"
         )
 
         val isHeld = index == heldIndex.value
@@ -99,15 +131,37 @@ fun CardStack(
 
         Box(
             modifier = Modifier
-                .offset(x = if (focusedCard == state) 0.dp else 100.dp)
+                .offset(
+                    x = if (focusedCard == state) 0.dp else {
+                        val baseOffset = 100.dp + (abs(relativePos) * 30).dp
+                        if (isFirstLoad) {
+                            baseOffset + (1f - entryAnimation.value) * 500.dp
+                        } else {
+                            baseOffset
+                        }
+                    },
+                    y = 0.dp
+                )
                 .graphicsLayer {
                     rotationZ = angle
                     translationX = animatedOffsetX.toPx() + draggedX.value
                     translationY = offsetY.toPx()
-                    scaleX = finalScale
-                    scaleY = finalScale
+                    scaleX = if (isFirstLoad) {
+                        finalScale * (0.8f + (entryAnimation.value * 0.2f))
+                    } else {
+                        finalScale
+                    }
+                    scaleY = if (isFirstLoad) {
+                        finalScale * (0.8f + (entryAnimation.value * 0.2f))
+                    } else {
+                        finalScale
+                    }
                     rotationY = rotationYAnim
-                    alpha = if (state == focusedCard) 1f else 1f - min(1f, abs(draggedX.value) / 150f)
+                    alpha = if (isFirstLoad) {
+                        entryAnimation.value * (if (state == focusedCard) 1f else 1f - min(1f, abs(draggedX.value) / 150f))
+                    } else {
+                        if (state == focusedCard) 1f else 1f - min(1f, abs(draggedX.value) / 150f)
+                    }
                     cameraDistance = cameraDistancePx
                 }
                 .shadow(

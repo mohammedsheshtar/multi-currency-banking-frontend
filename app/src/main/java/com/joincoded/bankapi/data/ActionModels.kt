@@ -1,13 +1,7 @@
 package com.joincoded.bankapi.data
 
-
-import androidx.compose.runtime.Composable
-
-
-data class ServiceAction(
-    val icon: @Composable () -> Unit,
-    val label: String
-)
+// ServiceAction is now defined in ServiceAction.kt
+// This file only contains TransactionItem
 
 data class TransactionItem(
     val id: String,
