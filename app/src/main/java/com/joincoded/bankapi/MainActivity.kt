@@ -17,7 +17,7 @@ import androidx.navigation.compose.rememberNavController
 import com.joincoded.bankapi.composable.ExchangeRateScreen
 import com.joincoded.bankapi.composable.LoginScreen
 import com.joincoded.bankapi.composable.RegistrationScreen
-import com.joincoded.bankapi.profile.ProfileScreen
+import com.joincoded.bankapi.composable.ProfileScreen
 import com.joincoded.bankapi.ui.theme.BankAPITheme
 
 class MainActivity : ComponentActivity() {
@@ -70,7 +70,7 @@ fun AppNavigator(
 
         composable("${NavRoutes.NAV_ROUTE_PROFILE_SCREEN.value}/{token}") { backStackEntry ->
             val token = backStackEntry.arguments?.getString("token") ?: ""
-
+            ProfileScreen(token)
         }
     }
 }

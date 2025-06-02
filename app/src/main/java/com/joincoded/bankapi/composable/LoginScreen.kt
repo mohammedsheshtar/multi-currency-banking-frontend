@@ -45,13 +45,14 @@ fun LoginScreen(
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    if (isLoggedIn && token != null) {
-        LaunchedEffect(token) {
+    LaunchedEffect(isLoggedIn, token) {
+        if (isLoggedIn && token != null) {
             navController.navigate("${NavRoutes.NAV_ROUTE_PROFILE_SCREEN.value}/$token") {
                 popUpTo(NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value) { inclusive = true }
             }
         }
     }
+
 
 
     val neonPurple = Color(0xFFB297E7)

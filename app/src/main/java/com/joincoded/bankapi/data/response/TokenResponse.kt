@@ -33,10 +33,21 @@ data class AuthenticationResponse(
     val token: String
 )
 
+data class KYCRequest(
+    val firstName: String = "",
+    val lastName: String = "",
+    val dateOfBirth: String = "",
+    val civilId: String = "",
+    val country: String = "",
+    val phoneNumber: String = "",
+    val homeAddress: String = "",
+    val salary: String = ""
+)
+
 data class KYCResponse(
     val firstName: String,
     val lastName: String,
-    val dateOfBirth: LocalDate,
+    val dateOfBirth: String,
     val civilId: String,
     val country: String,
     val phoneNumber: String,
