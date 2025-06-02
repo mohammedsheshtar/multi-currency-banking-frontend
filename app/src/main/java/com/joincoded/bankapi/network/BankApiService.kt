@@ -9,6 +9,7 @@ import com.joincoded.bankapi.data.request.KYCRequest
 import com.joincoded.bankapi.data.request.TransferRequest
 import com.joincoded.bankapi.data.request.WithdrawRequest
 import com.joincoded.bankapi.data.response.AuthenticationResponse
+import com.joincoded.bankapi.data.response.KYCResponse
 import com.joincoded.bankapi.data.response.ListAccountResponse
 import com.joincoded.bankapi.data.response.ListMembershipResponse
 import com.joincoded.bankapi.data.response.TokenResponse
@@ -59,8 +60,8 @@ interface AuthenticationApiService {
 
 interface KycApiService {
     @GET("api/v1/users/kyc")
-    suspend fun getMyKYC(@Header(Constants.authorization) token: String?,
-                         request: KYCRequest): Response<*>?
+    suspend fun getMyKYC(@Header(Constants.authorization) token: String?): Response<KYCResponse>
+
 
     @POST("api/v1/users/kyc")
     suspend fun addOrUpdateMyKYC(@Header(Constants.authorization) token: String?,

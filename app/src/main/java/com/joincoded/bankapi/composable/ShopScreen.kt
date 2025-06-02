@@ -51,8 +51,9 @@ fun ShopPage(navController: NavController, token: String, shopViewModel: ShopVie
 
     LaunchedEffect(token) {
         shopViewModel.token = token
-        shopViewModel.fetchShopItems()
+        shopViewModel.fetchUserPointsAndItems()
     }
+
 
     Column(
         modifier = Modifier
@@ -76,6 +77,46 @@ fun ShopPage(navController: NavController, token: String, shopViewModel: ShopVie
                 ShopItemCard(item, viewModel = shopViewModel)
             }
         }
+// Confirm Buy Dialog
+        if (shopViewModel.showBuyConfirmDialog) {
+            val item = shopViewModel.selectedItemToBuy
+            if (item != null) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { shopViewModel.showBuyConfirmDialog = false },
+                    title = { Text("Confirm Purchase") },
+                    text = { Text("Buy ${item.name} for ${item.requiredPoints} points?") },
+                    confirmButton = {
+                        Button(onClick = {
+                            shopViewModel.showBuyConfirmDialog = false
+                            shopViewModel.buyItem(item.id)
+                        }) {
+                            Text("Confirm")
+                        }
+                    },
+                    dismissButton = {
+                        Button(onClick = { shopViewModel.showBuyConfirmDialog = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
+        }
+
+// Success Dialog
+        if (shopViewModel.showSuccessDialog) {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { shopViewModel.showSuccessDialog = false },
+                title = { Text("Purchase Successful") },
+                text = { Text(shopViewModel.purchaseMessage ?: "") },
+                confirmButton = {
+                    Button(onClick = {
+                        shopViewModel.showSuccessDialog = false
+                    }) {
+                        Text("OK")
+                    }
+                }
+            )
+        }
 
     }
 }
@@ -85,6 +126,9 @@ fun ShopItemCard(item: ShopItem, viewModel: ShopViewModel) {
     val backgroundColor = if (item.isUnlocked) CardDark else CardDark.copy(alpha = 0.3f)
     val textColor = if (item.isUnlocked) TextLight else TextLight.copy(alpha = 0.5f)
     val purpleAccent = Color(0xFFB297E7)
+
+    // ✅ Check if user can buy: unlocked, has enough points, and item is in stock
+    val isBuyEnabled = item.isUnlocked && item.itemQuantity > 0 && item.userPoints >= item.requiredPoints
 
     Card(
         modifier = Modifier
@@ -125,32 +169,25 @@ fun ShopItemCard(item: ShopItem, viewModel: ShopViewModel) {
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-//                Text(
-//                    text = item.description,
-//                    color = textColor,
-//                    fontSize = 12.sp,
-//                    maxLines = 1
-//                )
                 Text(
                     text = "${item.tier} • ${item.requiredPoints} pts",
                     color = item.tierColor,
                     fontSize = 12.sp
                 )
-
             }
 
             // Right button
             Button(
-                onClick = { viewModel.buyItem(item.id) },
-                enabled = item.isUnlocked,
+                onClick = { viewModel.triggerBuy(item) },
+                enabled = isBuyEnabled,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (item.isUnlocked) purpleAccent else Color.Gray,
+                    containerColor = if (isBuyEnabled) purpleAccent else Color.Gray,
                     contentColor = Color.Black,
                     disabledContentColor = Color.DarkGray
                 ),
                 modifier = Modifier.height(36.dp)
             ) {
-                if (item.isUnlocked) {
+                if (isBuyEnabled) {
                     Text("Buy", fontSize = 12.sp)
                 } else {
                     Icon(Icons.Filled.Lock, contentDescription = "Locked")
@@ -163,13 +200,16 @@ fun ShopItemCard(item: ShopItem, viewModel: ShopViewModel) {
 
 
 
+
 data class ShopItem(
     val id: Long,
     val name: String,
     val tier: String,
     val requiredPoints: Int,
+    val itemQuantity: Int,
     val tierColor: Color,
-    val isUnlocked: Boolean
+    val isUnlocked: Boolean,
+    val userPoints: Int
 )
 
 
