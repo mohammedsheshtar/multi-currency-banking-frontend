@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -23,10 +24,7 @@ import com.joincoded.bankapi.NavRoutes
 import com.joincoded.bankapi.viewmodel.AuthViewModel
 
 @Composable
-fun RegistrationScreen(
-    navController: NavController
-   // onRegisterClick: (String, String, String, String, String, String, String) -> Unit
-) {
+fun RegistrationScreen(navController: NavController) {
     val authViewModel: AuthViewModel = viewModel()
     val authMessage by authViewModel.authMessage.collectAsState()
 
@@ -38,22 +36,28 @@ fun RegistrationScreen(
     var nationalId by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
 
-    val neonPurple = Color(0xFFB297E7)
-    val darkGradient = Brush.verticalGradient(
-        colors = listOf(Color(0xFF1C1C1E), Color(0xFF323232), Color(0xFF1C1C1E))
+    val backgroundDark = Color(0xFF141219)
+    val primaryDark = Color(0xFFCDBDFF)
+    val onSurfaceDark = Color(0xFFE6E0EA)
+    val fieldBackground = Color(0xFF323232)
+
+    val gradientBrush = Brush.linearGradient(
+        colors = listOf(Color(0xFFAA8EE1), Color(0xFF8356C0)),
+        start = Offset(0f, 0f),
+        end = Offset(400f, 400f)
     )
     val fieldColors = TextFieldDefaults.colors(
-        focusedContainerColor = Color(0xFF323232),
-        unfocusedContainerColor = Color(0xFF323232),
+        focusedContainerColor = fieldBackground,
+        unfocusedContainerColor = fieldBackground,
         focusedIndicatorColor = Color.Transparent,
         unfocusedIndicatorColor = Color.Transparent,
-        cursorColor = neonPurple
+        cursorColor = primaryDark
     )
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(darkGradient)
+            .background(backgroundDark)
             .padding(22.dp)
     ) {
         Column(
@@ -62,12 +66,6 @@ fun RegistrationScreen(
                 .padding(top = 50.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            val gradientBrush = Brush.linearGradient(
-                colors = listOf(Color(0xFFAA8EE1), Color(0xFF8356C0)),
-                start = Offset(0f, 0f),
-                end = Offset(400f, 400f)
-            )
-
             BasicText(
                 text = "Create your account!",
                 style = TextStyle(
@@ -89,84 +87,76 @@ fun RegistrationScreen(
                 onValueChange = { fullName = it },
                 label = { Text("Full Name", color = Color.White) },
                 colors = fieldColors,
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)),
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).padding(vertical = 4.dp),
                 shape = RoundedCornerShape(30.dp)
             )
-            Spacer(modifier = Modifier.height(8.dp))
             TextField(
                 value = username,
                 onValueChange = { username = it },
                 label = { Text("Username", color = Color.White) },
                 colors = fieldColors,
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)),
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).padding(vertical = 4.dp),
                 shape = RoundedCornerShape(30.dp)
             )
-            Spacer(modifier = Modifier.height(8.dp))
             TextField(
                 value = password,
                 onValueChange = { password = it },
                 label = { Text("Password", color = Color.White) },
                 visualTransformation = PasswordVisualTransformation(),
                 colors = fieldColors,
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)),
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).padding(vertical = 4.dp),
                 shape = RoundedCornerShape(30.dp)
             )
-            Spacer(modifier = Modifier.height(8.dp))
             TextField(
                 value = confirmPassword,
                 onValueChange = { confirmPassword = it },
                 label = { Text("Confirm Password", color = Color.White) },
                 visualTransformation = PasswordVisualTransformation(),
                 colors = fieldColors,
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)),
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).padding(vertical = 4.dp),
                 shape = RoundedCornerShape(30.dp)
             )
-            Spacer(modifier = Modifier.height(8.dp))
             TextField(
                 value = phone,
                 onValueChange = { phone = it },
                 label = { Text("Phone Number", color = Color.White) },
                 colors = fieldColors,
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)),
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).padding(vertical = 4.dp),
                 shape = RoundedCornerShape(30.dp)
             )
-            Spacer(modifier = Modifier.height(8.dp))
             TextField(
                 value = nationalId,
                 onValueChange = { nationalId = it },
                 label = { Text("National ID", color = Color.White) },
                 colors = fieldColors,
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)),
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).padding(vertical = 4.dp),
                 shape = RoundedCornerShape(30.dp)
             )
-            Spacer(modifier = Modifier.height(8.dp))
             TextField(
                 value = address,
                 onValueChange = { address = it },
                 label = { Text("Address (Optional)", color = Color.White) },
                 colors = fieldColors,
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)),
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).padding(vertical = 4.dp),
                 shape = RoundedCornerShape(30.dp)
             )
-            Spacer(modifier = Modifier.height(8.dp))
+
             Button(
                 onClick = {
                     if (password == confirmPassword) {
                         authViewModel.register(username, password)
-                    } else {
-                        // Optional
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White)
             ) {
-                Text("Register", color = neonPurple)
+                Text("Register", color = primaryDark)
             }
 
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = authMessage,
-                color = Color.White,
+                color = onSurfaceDark,
                 modifier = Modifier.padding(top = 8.dp)
             )
             if (authMessage == "Registration successful!") {
