@@ -101,12 +101,14 @@ interface TransactionApiService {
     suspend fun transferAccounts(@Header(Constants.authorization) token: String?,
                                  @Body request: TransferRequest): Response<*>
 
-        @GET("api/v1/accounts/transactions/{accountId}")
-        suspend fun getTransactionHistory(
-            @Header(Constants.authorization) token: String?,
-            @Path("accountId") accountId: Int
-        ): Response<List<TransactionHistoryResponse>>
-    }
+    @GET("api/v1/accounts/transactions/{accountNumber}")
+    suspend fun getTransactionHistory(
+        @Header(Constants.authorization) token: String?,
+        @Path("accountNumber") accountNumber: String
+    ): Response<List<TransactionHistoryResponse>>
+
+
+}
 
 
     interface UserApiService {

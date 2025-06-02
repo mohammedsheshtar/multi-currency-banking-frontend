@@ -28,7 +28,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,6 +44,10 @@ import com.joincoded.bankapi.ui.theme.TextLight
 import com.joincoded.bankapi.viewmodel.BankViewModel
 import java.math.BigDecimal
 import androidx.lifecycle.viewmodel.compose.viewModel
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun HomePage(navController: NavController, viewModel: BankViewModel = viewModel()) {
@@ -52,9 +55,15 @@ fun HomePage(navController: NavController, viewModel: BankViewModel = viewModel(
     val transactions = viewModel.transactions
     val errorMessage = viewModel.errorMessage
 
-//    LaunchedEffect(Unit) {
-//        viewModel.loginAndFetch()
-//    }
+    LaunchedEffect(Unit) {
+        viewModel.getAccounts()
+    }
+
+    LaunchedEffect(viewModel.accounts) {
+        if (userAccounts.isNotEmpty()) {
+            viewModel.getAllTransactionsForUserAccounts()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -63,14 +72,15 @@ fun HomePage(navController: NavController, viewModel: BankViewModel = viewModel(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        errorMessage?.let {
-            Text(it, color = Color.Red)
-            Spacer(modifier = Modifier.height(8.dp))
+        if (errorMessage != null && userAccounts.isEmpty()) {
+            Text(errorMessage!!, color = Color.Red)
         }
 
-        if (userAccounts.isEmpty() ) {
+
+        if (userAccounts.isEmpty()) {
             Text("Loading data...", color = Accent)
         } else {
+            // Balances
             Text("Your Balances", color = Accent, fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
             LazyRow {
@@ -88,7 +98,7 @@ fun HomePage(navController: NavController, viewModel: BankViewModel = viewModel(
                                 .padding(12.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text(getCurrencyFlag(account.symbol), fontSize = 24.sp)
+                            Text(getCurrencyFlag(account.symbol), fontSize = 24.sp, modifier = Modifier.padding(bottom = 8.dp))
                             Text("${account.symbol} Account", color = Accent, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                             Spacer(modifier = Modifier.height(4.dp))
                             Text("${account.balance} ${account.symbol}", color = TextLight, fontSize = 16.sp, fontWeight = FontWeight.Bold)
@@ -97,6 +107,7 @@ fun HomePage(navController: NavController, viewModel: BankViewModel = viewModel(
                 }
             }
 
+            // Transactions
             Text("Recent Transactions", color = Accent, fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
             Box(
@@ -120,7 +131,7 @@ fun HomePage(navController: NavController, viewModel: BankViewModel = viewModel(
                             ) {
                                 Column {
                                     Text(txn.transactionType, color = TextLight)
-                                    Text(txn.timeStamp.toString(), fontSize = 12.sp, color = AccentLight)
+                                    Text(formatDateTime(txn.timeStamp.toString()), fontSize = 12.sp, color = AccentLight)
                                 }
 
                                 val amountColor = if (txn.amount > BigDecimal.ZERO) Color(0xFF4CAF50) else Color(0xFFF44336)
@@ -136,8 +147,7 @@ fun HomePage(navController: NavController, viewModel: BankViewModel = viewModel(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
+            // Quick Services
             Text("Quick Services", color = Accent, fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
             val services = listOf(
@@ -198,5 +208,17 @@ fun getCurrencyFlag(currency: String): String {
         "GBP" -> "🇬🇧"
         "JPY" -> "🇯🇵"
         else -> "🌐"
+    }
+}
+
+
+fun formatDateTime(isoString: String): String {
+    return try {
+        val inputFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
+        val outputFormatter = DateTimeFormatter.ofPattern("MMM d • h:mm a")
+        val dateTime = LocalDateTime.parse(isoString, inputFormatter)
+        dateTime.format(outputFormatter)
+    } catch (e: Exception) {
+        isoString // fallback if parsing fails
     }
 }
