@@ -14,9 +14,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.joincoded.bankapi.composable.LoginScreen
-import com.joincoded.bankapi.composable.RegistrationScreen
-import com.joincoded.bankapi.composable.ProfileScreen
+import com.joincoded.bankapi.composable.ExchangeRateScreen
+import com.joincoded.bankapi.login.LoginScreen
+import com.joincoded.bankapi.login.RegistrationScreen
+import com.joincoded.bankapi.profile.ProfileScreen
 import com.joincoded.bankapi.ui.theme.BankAPITheme
 
 class MainActivity : ComponentActivity() {

@@ -40,7 +40,7 @@ interface BankApiService {
 }
 
 interface AccountApiService {
-    @GET("api/va/users/accounts")
+    @GET("api/v1/users/accounts")
     suspend fun listUserAccounts(@Header(Constants.authorization) token: String?): Response<*>
 
     @POST("api/v1/users/accounts")
@@ -53,7 +53,7 @@ interface AccountApiService {
 }
 
 interface AuthenticationApiService {
-    @POST("authentication/api/v1/authentication/login")
+    @POST("authentication/api/v1/authenticaation/login")
     suspend fun login(@Body authRequest: AuthenticationRequest): Response<AuthenticationResponse>
 }
 
