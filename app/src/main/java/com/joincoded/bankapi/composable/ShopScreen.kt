@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
@@ -65,22 +67,21 @@ fun ShopPage(navController: NavController, token: String, shopViewModel: ShopVie
             Text(text = "Error: $error", color = Color.Red)
         }
 
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(8.dp),
+        LazyColumn(
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
             modifier = Modifier.fillMaxSize()
         ) {
             items(items) { item ->
-                ShopItemCard(item)
+                ShopItemCard(item, viewModel = shopViewModel)
             }
         }
+
     }
 }
 
 @Composable
-fun ShopItemCard(item: ShopItem) {
+fun ShopItemCard(item: ShopItem, viewModel: ShopViewModel) {
     val backgroundColor = if (item.isUnlocked) CardDark else CardDark.copy(alpha = 0.3f)
     val textColor = if (item.isUnlocked) TextLight else TextLight.copy(alpha = 0.5f)
     val purpleAccent = Color(0xFFB297E7)
@@ -88,66 +89,69 @@ fun ShopItemCard(item: ShopItem) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(260.dp)
+            .height(110.dp)
             .clip(RoundedCornerShape(16.dp)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (item.isUnlocked) 6.dp else 2.dp),
         colors = CardDefaults.cardColors(containerColor = backgroundColor)
     ) {
-        Column(
+        Row(
             modifier = Modifier
-                .padding(14.dp)
-                .fillMaxHeight(),
-            verticalArrangement = Arrangement.SpaceBetween
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Header
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // Left icon
+            Icon(
+                imageVector = Icons.Filled.Star,
+                contentDescription = "Tier Icon",
+                tint = item.tierColor,
+                modifier = Modifier.size(36.dp)
+            )
+
+            // Center content
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 12.dp),
+                verticalArrangement = Arrangement.Center
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Star,
-                    contentDescription = "Tier Icon",
-                    tint = item.tierColor,
-                    modifier = Modifier.size(24.dp)
-                )
                 Text(
-                    item.name,
+                    text = item.name,
                     color = textColor,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
+                    fontSize = 16.sp,
+                    maxLines = 2,
+                    modifier = Modifier.fillMaxWidth(),
                 )
+
+//                Text(
+//                    text = item.description,
+//                    color = textColor,
+//                    fontSize = 12.sp,
+//                    maxLines = 1
+//                )
+                Text(
+                    text = "${item.tier} • ${item.requiredPoints} pts",
+                    color = item.tierColor,
+                    fontSize = 12.sp
+                )
+
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // Description
-//            Text(
-//                text = item.description,
-//                fontSize = 12.sp,
-//                color = textColor
-//            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Tier info
-            Text("Tier: ${item.tier}", color = textColor, fontSize = 12.sp)
-            Text("Required: ${item.requiredPoints} pts", color = textColor, fontSize = 12.sp)
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Button
+            // Right button
             Button(
-                onClick = { /* TODO: Buy item or show locked tooltip */ },
+                onClick = { viewModel.buyItem(item.id) },
                 enabled = item.isUnlocked,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (item.isUnlocked) purpleAccent else Color.Gray,
                     contentColor = Color.Black,
                     disabledContentColor = Color.DarkGray
                 ),
-                modifier = Modifier.align(Alignment.End)
+                modifier = Modifier.height(36.dp)
             ) {
                 if (item.isUnlocked) {
-                    Text("Buy")
+                    Text("Buy", fontSize = 12.sp)
                 } else {
                     Icon(Icons.Filled.Lock, contentDescription = "Locked")
                 }
@@ -156,12 +160,17 @@ fun ShopItemCard(item: ShopItem) {
     }
 }
 
+
+
+
 data class ShopItem(
+    val id: Long,
     val name: String,
-//    val description: String,
     val tier: String,
     val requiredPoints: Int,
     val tierColor: Color,
     val isUnlocked: Boolean
 )
+
+
 
