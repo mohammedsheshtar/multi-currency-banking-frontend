@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -50,10 +51,10 @@ fun ShopPage(navController: NavController, token: String, shopViewModel: ShopVie
     val error = shopViewModel.errorMessage.value
 
     LaunchedEffect(token) {
+        println("⚡ token received in ShopPage: $token")
         shopViewModel.token = token
         shopViewModel.fetchUserPointsAndItems()
     }
-
 
     Column(
         modifier = Modifier
@@ -61,8 +62,58 @@ fun ShopPage(navController: NavController, token: String, shopViewModel: ShopVie
             .background(DarkBackground)
             .padding(16.dp)
     ) {
-        Text("Shop Items", color = Accent, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Xchange Shop",
+            color = Accent,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            colors = CardDefaults.cardColors(containerColor = CardDark),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Your Points",
+                        color = TextLight,
+                        fontSize = 16.sp
+                    )
+                    Text(
+                        text = "${shopViewModel.userPoints}",
+                        color = shopViewModel.getTierColor(),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Your Tier",
+                        color = TextLight,
+                        fontSize = 16.sp
+                    )
+                    Text(
+                        text = shopViewModel.userTier?.capitalize() ?: "Unknown",
+                        color = shopViewModel.getTierColor(),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
 
         if (!error.isNullOrBlank()) {
             Text(text = "Error: $error", color = Color.Red)
@@ -77,7 +128,8 @@ fun ShopPage(navController: NavController, token: String, shopViewModel: ShopVie
                 ShopItemCard(item, viewModel = shopViewModel)
             }
         }
-// Confirm Buy Dialog
+
+        // Confirm Buy Dialog
         if (shopViewModel.showBuyConfirmDialog) {
             val item = shopViewModel.selectedItemToBuy
             if (item != null) {
@@ -102,7 +154,7 @@ fun ShopPage(navController: NavController, token: String, shopViewModel: ShopVie
             }
         }
 
-// Success Dialog
+        // Success Dialog
         if (shopViewModel.showSuccessDialog) {
             androidx.compose.material3.AlertDialog(
                 onDismissRequest = { shopViewModel.showSuccessDialog = false },
@@ -118,6 +170,22 @@ fun ShopPage(navController: NavController, token: String, shopViewModel: ShopVie
             )
         }
 
+        // KYC Required Dialog
+        if (shopViewModel.showKycDialog) {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { shopViewModel.showKycDialog = false },
+                title = { Text("KYC Required") },
+                text = { Text("You need to complete your KYC profile before accessing the shop.") },
+                confirmButton = {
+                    Button(onClick = {
+                        shopViewModel.showKycDialog = false
+                        navController.navigate("kycRegistration") // TODO: Add this route in your NavHost
+                    }) {
+                        Text("OK")
+                    }
+                }
+            )
+        }
     }
 }
 

@@ -12,6 +12,7 @@ import com.joincoded.bankapi.data.response.AuthenticationResponse
 import com.joincoded.bankapi.data.response.KYCResponse
 import com.joincoded.bankapi.data.response.ListAccountResponse
 import com.joincoded.bankapi.data.response.ListMembershipResponse
+import com.joincoded.bankapi.data.response.ShopTransactionResponse
 import com.joincoded.bankapi.data.response.TokenResponse
 import com.joincoded.bankapi.data.response.TransactionHistoryResponse
 import com.joincoded.bankapi.utils.Constants
@@ -86,7 +87,7 @@ interface ShopApiService {
                         @Path("itemId") itemId: Int): Response<*>
 
     @GET("/api/v1/shop/history")
-    suspend fun getShopTransaction(@Header(Constants.authorization) token: String?): Response<*>
+    suspend fun getShopTransaction(@Header(Constants.authorization) token: String?): Response<List<ShopTransactionResponse>>
 }
 
 interface TransactionApiService {
@@ -98,6 +99,8 @@ interface TransactionApiService {
     suspend fun withdrawAccount(@Header(Constants.authorization) token: String?,
                                 @Body request: WithdrawRequest): Response<*>
 
+
+
     @POST("/api/v1/accounts/transfer")
     suspend fun transferAccounts(@Header(Constants.authorization) token: String?,
                                  @Body request: TransferRequest): Response<*>
@@ -105,14 +108,14 @@ interface TransactionApiService {
     @GET("api/v1/accounts/transactions/{accountNumber}")
     suspend fun getTransactionHistory(
         @Header(Constants.authorization) token: String?,
-        @Path("accountNumber") accountNumber: String
+        @Path("accountNumber") accountId: Long
     ): Response<List<TransactionHistoryResponse>>
 
 
 }
 
 
-    interface UserApiService {
+interface UserApiService {
     @POST("api/v1/authentication/register")
     suspend fun registerUser(@Body request: CreateUserDTO): Response<Any>
 }

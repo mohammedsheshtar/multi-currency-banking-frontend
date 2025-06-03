@@ -71,7 +71,7 @@ data class ShopTransactionResponse(
     val itemTier: String,
     val accountTier: String,
     val pointsSpent: Int,
-    val timeOfTransaction: LocalDateTime
+    val timeOfTransaction: String
 )
 
 data class DepositResponse(

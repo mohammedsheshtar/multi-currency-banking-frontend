@@ -15,8 +15,10 @@ import com.joincoded.bankapi.network.RetrofitHelper
 import kotlinx.coroutines.launch
 
 class BankViewModel : ViewModel() {
-    private val apiService = RetrofitHelper.getInstance().create(BankApiService::class.java)
+    private val apiService = RetrofitHelper.getInstance().create(com.joincoded.bankapi.network.BankApiService::class.java)
+
     var token: String? by mutableStateOf(null)
+    var userName: String? by mutableStateOf(null)
 
     var accounts by mutableStateOf<List<ListAccountResponse>>(emptyList())
         private set
@@ -40,13 +42,19 @@ class BankViewModel : ViewModel() {
                     token = "Bearer ${response.body()?.token}"
                     println("✅ Login successful. Token: $token")
 
+                    // Fetch KYC info to get first name
+                    val kycResponse = RetrofitHelper.KycApi.getMyKYC(token)
+                    if (kycResponse.isSuccessful) {
+                        userName = kycResponse.body()?.firstName
+                        println("🙋 First Name: $userName")
+                    }
+
                     val responseAccount = RetrofitHelper.AccountApi.listUserAccounts(token)
                     accounts = responseAccount.body() ?: emptyList()
                     println("📦 Accounts: $accounts")
 
-                    // Automatically get transactions for the first account
                     accounts.firstOrNull()?.let { account ->
-                        getTransactions(account.accountNumber)
+                        getTransactions(account.id)
                     }
                 } else {
                     errorMessage = "Login failed: ${response.message()}"
@@ -81,7 +89,7 @@ class BankViewModel : ViewModel() {
             try {
                 val allTransactions = mutableListOf<TransactionHistoryResponse>()
                 accounts.forEach { account ->
-                    val response = RetrofitHelper.TransactionApi.getTransactionHistory(token, account.accountNumber)
+                    val response = RetrofitHelper.TransactionApi.getTransactionHistory(token, account.id)
                     if (response.isSuccessful) {
                         response.body()?.let {
                             allTransactions.addAll(it)
@@ -99,12 +107,10 @@ class BankViewModel : ViewModel() {
         }
     }
 
-
-
-    fun getTransactions(accountNumber: String) {
+    fun getTransactions(accountId: Long) {
         viewModelScope.launch {
             try {
-                val response = RetrofitHelper.TransactionApi.getTransactionHistory(token, accountNumber)
+                val response = RetrofitHelper.TransactionApi.getTransactionHistory(token, accountId)
                 if (response.isSuccessful) {
                     transactions.clear()
                     response.body()?.let { transactions.addAll(it) }

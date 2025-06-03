@@ -21,9 +21,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.joincoded.bankapi.composable.HomePage
+import com.joincoded.bankapi.composable.ShopHistoryScreen
 import com.joincoded.bankapi.composable.ShopPage
 import com.joincoded.bankapi.ui.theme.BankAPITheme
 import com.joincoded.bankapi.viewmodel.BankViewModel
+import com.joincoded.bankapi.viewmodel.ShopHistoryViewModel
+import com.joincoded.bankapi.data.response.TokenResponse
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,19 +41,32 @@ class MainActivity : ComponentActivity() {
                     val navController = rememberNavController()
                     NavHost(
                         navController = navController,
-                        startDestination = NavRoutes.NAV_ROUTE_SHOP_SCREEN.value // change this to SHOP if needed
+                        startDestination = NavRoutes.NAV_ROUTE_HOME_SCREEN.value
                     ) {
                         composable(NavRoutes.NAV_ROUTE_HOME_SCREEN.value) {
                             HomePage(navController = navController)
                         }
                         composable(NavRoutes.NAV_ROUTE_SHOP_SCREEN.value) {
                             val bankViewModel: BankViewModel = viewModel()
+                            val token = bankViewModel.token
+
+                            if (!token.isNullOrBlank()) {
+                                ShopPage(navController = navController, token = token)
+                            } else {
+                                // Show loading or placeholder until token is ready
+                                androidx.compose.material3.Text("Loading...")
+                            }
+                        }
+
+                        composable(NavRoutes.NAV_ROUTE_SHOP_HISTORY.value) {
+                            val bankViewModel: BankViewModel = viewModel()
+                            val shopHistoryViewModel: ShopHistoryViewModel = viewModel()
                             val token = bankViewModel.token ?: ""
 
-                            ShopPage(navController = navController, token = token)
+                            ShopHistoryScreen(viewModel = shopHistoryViewModel, token = token)
                         }
-                        // Add more composable screens here when needed
                     }
+
                 }
             }
         }
