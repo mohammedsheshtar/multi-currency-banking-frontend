@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.fragment.app.FragmentActivity
 
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -34,7 +35,7 @@ import com.joincoded.bankapi.profile.ProfileScreen
 import com.joincoded.bankapi.ui.theme.BankAPITheme
 
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         RetrofitHelper.initialize(applicationContext)
@@ -69,7 +70,6 @@ fun AppNavigator(
 
     // Init + Login + Fetch cards
     LaunchedEffect(Unit) {
-        walletViewModel.initialize(context)
         walletViewModel.loginAndLoadWallet(context)
     }
 

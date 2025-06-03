@@ -26,7 +26,8 @@ import kotlin.random.Random
 fun PaymentCardView(
     card: PaymentCard,
     modifier: Modifier = Modifier,
-    backgroundGradient: Brush? = null
+    backgroundGradient: Brush? = null,
+    isFocused: Boolean = false
 ) {
     var flipped by remember { mutableStateOf(false) }
     var showSensitive by remember { mutableStateOf(false) }
@@ -43,6 +44,7 @@ fun PaymentCardView(
         - Card Name: ${card.name}
         - Show Sensitive: $showSensitive
         - Random CVV: $randomCvv
+        - Is Focused: $isFocused
     """.trimIndent())
     
     // Memoize the card number and CVV to prevent unnecessary recompositions
@@ -86,28 +88,37 @@ fun PaymentCardView(
 
     Box(
         modifier = modifier
-            .clickable { 
-                Log.d("PaymentCardView", "Card clicked, flipping from ${if (flipped) "back" else "front"} to ${if (flipped) "front" else "back"}")
-                flipped = !flipped 
+            .clickable(enabled = isFocused) { 
+                if (isFocused) {
+                    Log.d("PaymentCardView", "Card clicked, flipping from ${if (flipped) "back" else "front"} to ${if (flipped) "front" else "back"}")
+                    flipped = !flipped 
+                }
             }
             .graphicsLayer {
                 rotationY = if (flipped) 180f else 0f
                 cameraDistance = 8 * density
             }
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.DarkGray)
+            .background(
+                when {
+                    backgroundGradient != null -> backgroundGradient
+                    else -> Brush.linearGradient(listOf(Color.DarkGray, Color.DarkGray))
+                }
+            )
     ) {
         if (!flipped) {
             FrontSide(
                 card = card,
                 cardNumber = cardNumber,
                 showSensitive = showSensitive,
-                backgroundImg = defaultBackground,
-                backgroundGradient = backgroundGradient,
+                backgroundImg = if (backgroundGradient == null) defaultBackground else null,
+                backgroundGradient = null,  // We already applied the gradient to the Box
                 onToggle = {
-                    Log.d("PaymentCardView", "Show info clicked, current state: $showSensitive")
-                    showSensitive = !showSensitive
-                    Log.d("PaymentCardView", "New showSensitive state: $showSensitive")
+                    if (isFocused) {
+                        Log.d("PaymentCardView", "Show info clicked, current state: $showSensitive")
+                        showSensitive = !showSensitive
+                        Log.d("PaymentCardView", "New showSensitive state: $showSensitive")
+                    }
                 }
             )
         } else {
@@ -115,8 +126,8 @@ fun PaymentCardView(
                 card = card,
                 cvv = cvv,
                 showSensitive = showSensitive,
-                backgroundImg = defaultBackground,
-                backgroundGradient = backgroundGradient
+                backgroundImg = if (backgroundGradient == null) defaultBackground else null,
+                backgroundGradient = null  // We already applied the gradient to the Box
             )
         }
     }
@@ -128,26 +139,19 @@ private fun FrontSide(
     card: PaymentCard,
     cardNumber: String,
     showSensitive: Boolean,
-    backgroundImg: String,
+    backgroundImg: String?,
     backgroundGradient: Brush?,
     onToggle: () -> Unit
 ) {
     Box(Modifier.fillMaxSize()) {
-        // Memoize the background image to prevent unnecessary recompositions
-        AsyncImage(
-            model = backgroundImg,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .matchParentSize()
-                .clip(RoundedCornerShape(16.dp))
-        )
-
-        if (backgroundGradient != null) {
-            Box(
+        // Only show background image if provided and no gradient is used
+        if (backgroundImg != null) {
+            AsyncImage(
+                model = backgroundImg,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .matchParentSize()
-                    .background(brush = backgroundGradient)
                     .clip(RoundedCornerShape(16.dp))
             )
         }
@@ -183,12 +187,6 @@ private fun FrontSide(
                         fontSize = 27.sp,
                         color = Color.White,
                         fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = card.name.ifEmpty { "FULL NAME" },
-                        fontSize = 16.sp,
-                        color = Color(0xFFD1B4FF),
-                        fontWeight = FontWeight.Medium
                     )
                 }
             }
@@ -231,6 +229,14 @@ private fun FrontSide(
                         Text("Account Type: ", fontSize = 12.sp, color = Color.LightGray)
                         Text(card.type, fontSize = 12.sp, color = Color(0xFFD1B4FF), fontWeight = FontWeight.Bold)
                     }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = card.name,
+                        fontSize = 20.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 0.5.sp
+                    )
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("Expires", fontSize = 12.sp, color = Color.LightGray)
@@ -270,7 +276,7 @@ private fun BackSide(
     card: PaymentCard,
     cvv: String,
     showSensitive: Boolean,
-    backgroundImg: String,
+    backgroundImg: String?,
     backgroundGradient: Brush?
 ) {
     Box(
@@ -278,20 +284,14 @@ private fun BackSide(
             .fillMaxSize()
             .graphicsLayer { rotationY = 180f }
     ) {
-        AsyncImage(
-            model = backgroundImg,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .matchParentSize()
-                .clip(RoundedCornerShape(16.dp))
-        )
-
-        if (backgroundGradient != null) {
-            Box(
+        // Only show background image if provided and no gradient is used
+        if (backgroundImg != null) {
+            AsyncImage(
+                model = backgroundImg,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .matchParentSize()
-                    .background(brush = backgroundGradient)
                     .clip(RoundedCornerShape(16.dp))
             )
         }

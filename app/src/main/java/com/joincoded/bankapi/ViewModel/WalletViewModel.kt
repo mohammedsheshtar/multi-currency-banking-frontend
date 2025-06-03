@@ -18,6 +18,7 @@ import com.joincoded.bankapi.data.response.TransferResponse
 import com.joincoded.bankapi.network.AccountApiService
 import com.joincoded.bankapi.network.RetrofitHelper
 import com.joincoded.bankapi.network.TransactionApiService
+import com.joincoded.bankapi.network.KycApiService
 import com.joincoded.bankapi.utils.Constants
 import com.joincoded.bankapi.utils.TokenManager
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,17 +26,26 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.io.EOFException
 import java.math.BigDecimal
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeFormatterBuilder
+import java.time.temporal.ChronoField
 import java.util.UUID
 import kotlin.math.log
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.joincoded.bankapi.composable.availableCardColors
+import com.joincoded.bankapi.data.response.CreateAccountResponse
+import com.joincoded.bankapi.utils.CardColorManager
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 
-class WalletViewModel : ViewModel() {
+class WalletViewModel(application: Application) : AndroidViewModel(application) {
     private val accountApiService = RetrofitHelper.AccountApi
     private val transactionApiService = RetrofitHelper.TransactionApi
+    private val kycApiService = RetrofitHelper.KycApi
     private var context: Context? = null
-
+    private var cardColorManager: CardColorManager? = null
 
     private val _cards = MutableStateFlow<List<CardState>>(emptyList())
     val cards: StateFlow<List<CardState>> get() = _cards
@@ -55,9 +65,14 @@ class WalletViewModel : ViewModel() {
     private val _transactionError = MutableStateFlow<String?>(null)
     val transactionError: StateFlow<String?> get() = _transactionError
 
-    fun initialize(context: Context) {
-        this.context = context.applicationContext
+    private val _kycData = MutableStateFlow<com.joincoded.bankapi.data.response.KYCResponse?>(null)
+    val kycData: StateFlow<com.joincoded.bankapi.data.response.KYCResponse?> get() = _kycData
+
+    init {
+        context = application.applicationContext
+        cardColorManager = CardColorManager.getInstance(application.applicationContext)
     }
+
     fun loginAndLoadWallet(context: Context) {
         this.context = context.applicationContext
         // Clear any existing token first
@@ -84,7 +99,13 @@ class WalletViewModel : ViewModel() {
                         
                         TokenManager.saveToken(context, token)
                         Log.d("WalletViewModel", "Token saved successfully: ${token.take(20)}...")
-                        fetchUserCards() // Now we call fetch after token is stored
+                        
+                        // First fetch KYC data
+                        Log.d("WalletViewModel", "Fetching KYC data after successful login...")
+                        fetchKYCData()
+                        
+                        // Then fetch user cards
+                        fetchUserCards()
                     } else {
                         _error.value = "Token is null or empty"
                         Log.e("WalletViewModel", "Token is null or empty from login response")
@@ -121,17 +142,14 @@ class WalletViewModel : ViewModel() {
                     return@launch
                 }
 
-                Log.d("WalletViewModel", "🔍 Fetching user cards with token: ${storedToken.take(10)}...")
-                val response = accountApiService.listUserAccounts(storedToken)
-                
                 Log.d("WalletViewModel", """
-                    📡 Accounts API Response:
-                    - Code: ${response.code()}
-                    - Message: ${response.message()}
-                    - Raw Body: ${response.body()}
-                    - Error Body: ${response.errorBody()?.string()}
+                    🔍 Fetching user cards:
+                    - Token: ${storedToken.take(20)}...
+                    - Current KYC data: ${_kycData.value?.let { "${it.firstName} ${it.lastName}" } ?: "null"}
                 """.trimIndent())
 
+                val response = accountApiService.listUserAccounts(storedToken)
+                
                 if (!response.isSuccessful) {
                     Log.e("WalletViewModel", """
                         ❌ Failed to fetch accounts:
@@ -145,106 +163,50 @@ class WalletViewModel : ViewModel() {
                 val accounts = response.body() as? List<ListAccountResponse> ?: emptyList()
                 Log.d("WalletViewModel", "📊 Found ${accounts.size} accounts")
                 
-                // Log detailed account information
-                accounts.forEach { account ->
-                    try {
-                        Log.d("WalletViewModel", """
-                            📝 Account Details:
-                            - Account Number: ${account.accountNumber}
-                            - Account ID: ${account.id}
-                            - Type: ${account.accountType}
-                            - Balance: ${account.balance}
-                            - Currency: ${account.symbol}
-                            - Country Code: ${account.countryCode}
-                            - Created At: ${account.createdAt}
-                        """.trimIndent())
-                    } catch (e: Exception) {
-                        Log.e("WalletViewModel", """
-                            ❌ Error parsing account details:
-                            - Account: $account
-                            - Error: ${e.message}
-                            - Stack trace: ${e.stackTraceToString()}
-                        """.trimIndent())
-                    }
-                }
-
-                // Filter accounts with balance > 0
-                val accountsWithBalance = accounts.filter { account -> 
-                    try {
-                        Log.d("WalletViewModel", "Checking account ${account.accountNumber} with balance ${account.balance}")
-                        account.balance > BigDecimal.ZERO 
-                    } catch (e: Exception) {
-                        Log.e("WalletViewModel", """
-                            ❌ Error checking account balance:
-                            - Account: $account
-                            - Error: ${e.message}
-                        """.trimIndent())
-                        false
-                    }
-                }
-                Log.d("WalletViewModel", "💰 Found ${accountsWithBalance.size} accounts with balance > 0")
-
-                if (accountsWithBalance.isEmpty()) {
-                    Log.d("WalletViewModel", "⚠️ No accounts with balance found")
-                    _cards.value = emptyList()
-                    return@launch
-                }
-
-                // Transform accounts to cards
-                val newCards = accountsWithBalance.mapNotNull { account ->
+                // Transform accounts to cards with KYC name
+                val newCards = accounts.mapNotNull { account ->
                     try {
                         if (account.id == null) {
                             Log.e("WalletViewModel", "❌ Account ID is null for account: ${account.accountNumber}")
                             return@mapNotNull null
                         }
                         
+                        val fullName = _kycData.value?.let { "${it.firstName} ${it.lastName}" }?.trim()
+                        // Get the card color from local storage
+                        val savedCardColor = cardColorManager?.getCardColor(account.accountNumber)
+                        Log.d("WalletViewModel", """
+                            🎴 Creating card for account ${account.accountNumber}:
+                            - Account Type: ${account.accountType}
+                            - KYC Name: $fullName
+                            - Will use name: ${fullName ?: account.accountType}
+                            - Saved Card Color: $savedCardColor
+                            - Available Colors: ${availableCardColors.map { it.name }}
+                        """.trimIndent())
+
                         val card = PaymentCard(
                             accountId = account.id ?: 0L,
                             accountNumber = account.accountNumber,
                             balance = account.balance.toDouble(),
                             currency = account.symbol,
-                            name = account.accountType,
+                            name = fullName ?: account.accountType,
                             cardNumber = account.accountNumber.takeLast(4).padStart(16, '*'),
                             expMonth = java.time.LocalDate.now().monthValue.toString().padStart(2, '0'),
                             expYear = (java.time.LocalDate.now().year + 5).toString(),
                             cvv = "***",
                             type = account.accountType,
-                            background = when(account.countryCode) {
-                                "USD" -> "usd"
-                                "KWD" -> "kwd"
-                                "EUR" -> "eur"
-                                "AED" -> "aed"
-                                else -> "default"
-                            }
+                            background = savedCardColor ?: "default"
                         )
-                        Log.d("WalletViewModel", """
-                            ✅ Created card:
-                            - Account ID: ${account.id}
-                            - Account Number: ${account.accountNumber}
-                            - Type: ${account.accountType}
-                            - Currency: ${account.symbol}
-                        """.trimIndent())
-                        CardState(card = card)
+                        CardState(card)
                     } catch (e: Exception) {
-                        Log.e("WalletViewModel", """
-                            ❌ Error creating card for account:
-                            - Account: $account
-                            - Error: ${e.message}
-                            - Stack trace: ${e.stackTraceToString()}
-                        """.trimIndent())
+                        Log.e("WalletViewModel", "❌ Error creating card for account: ${account.accountNumber}", e)
                         null
                     }
                 }
 
-                Log.d("WalletViewModel", "✅ Created ${newCards.size} cards")
                 _cards.value = newCards
-
+                Log.d("WalletViewModel", "✅ Updated cards list with ${newCards.size} cards")
             } catch (e: Exception) {
-                Log.e("WalletViewModel", """
-                    ❌ Error fetching cards:
-                    - Error: ${e.message}
-                    - Stack trace: ${e.stackTraceToString()}
-                """.trimIndent())
+                Log.e("WalletViewModel", "❌ Error fetching cards", e)
             }
         }
     }
@@ -370,10 +332,22 @@ class WalletViewModel : ViewModel() {
                     """.trimIndent())
 
                     _transactions.value = history.map {
+                        // Parse the ISO timestamp
+                        val formatter = DateTimeFormatterBuilder()
+                            .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
+                            .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
+                            .toFormatter()
+                        
+                        val dateTime = LocalDateTime.parse(it.timeStamp, formatter)
+                        
+                        // Format to a more readable format
+                        val displayFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' hh:mm a")
+                        val formattedDate = dateTime.format(displayFormatter)
+                        
                         TransactionItem(
                             id = UUID.randomUUID().toString(),
                             title = it.transactionType,
-                            date = it.timeStamp,
+                            date = formattedDate,  // Use the formatted date
                             amount = if (it.transactionType.lowercase() == "withdraw") "-${it.amount}" else "+${it.amount}",
                             cardId = it.accountNumber
                         )
@@ -611,7 +585,8 @@ class WalletViewModel : ViewModel() {
                 val response = accountApiService.closeAccount(storedToken, accountNumber)
                 
                 if (response.isSuccessful) {
-                    // Treat both empty response and successful response as success
+                    // Clear the saved card color
+                    cardColorManager?.clearCardColor(accountNumber)
                     Log.d("WalletViewModel", "✅ Account closed successfully: $accountNumber")
                     onSuccess()
                     // Refresh the cards list after successful closure
@@ -624,6 +599,8 @@ class WalletViewModel : ViewModel() {
             } catch (e: Exception) {
                 // Only treat as error if it's not a successful empty response
                 if (e is EOFException && e.message?.contains("End of input") == true) {
+                    // Clear the saved card color
+                    cardColorManager?.clearCardColor(accountNumber)
                     Log.d("WalletViewModel", "✅ Account closed successfully (empty response): $accountNumber")
                     onSuccess()
                     // Refresh the cards list after successful closure
@@ -640,6 +617,7 @@ class WalletViewModel : ViewModel() {
         initialBalance: String,
         countryCode: String,
         accountType: String,
+        cardColor: String = "default",
         onSuccess: () -> Unit = {},
         onError: (String) -> Unit = {}
     ) {
@@ -657,12 +635,15 @@ class WalletViewModel : ViewModel() {
                     - Initial Balance: $initialBalance
                     - Country Code: $countryCode
                     - Account Type: $accountType
+                    - Card Color: $cardColor
+                    - Available Colors: ${availableCardColors.map { it.name }}
                 """.trimIndent())
 
                 val request = CreateAccountRequest(
                     initialBalance = initialBalance.toDouble(),
                     countryCode = countryCode,
-                    accountType = accountType
+                    accountType = accountType,
+                    cardColor = cardColor
                 )
 
                 val response = accountApiService.createAccount(storedToken, request)
@@ -678,11 +659,20 @@ class WalletViewModel : ViewModel() {
                     return@launch
                 }
 
+                // Get the account number from the response
+                val responseBody = response.body()
+                if (responseBody is CreateAccountResponse) {
+                    // Save the card color locally
+                    cardColorManager?.saveCardColor(responseBody.accountNumber, cardColor)
+                    Log.d("WalletViewModel", "Saved card color ${cardColor} for account ${responseBody.accountNumber}")
+                }
+
                 Log.d("WalletViewModel", """
                     ✅ Account created successfully:
                     - Initial Balance: $initialBalance
                     - Country Code: $countryCode
                     - Account Type: $accountType
+                    - Card Color: $cardColor
                 """.trimIndent())
 
                 // Refresh the cards list to show the new account
@@ -691,6 +681,94 @@ class WalletViewModel : ViewModel() {
             } catch (e: Exception) {
                 Log.e("WalletViewModel", "Account creation failed with exception", e)
                 onError("Account creation failed: ${e.message}")
+            }
+        }
+    }
+
+    fun fetchKYCData() {
+        viewModelScope.launch {
+            try {
+                val token = TokenManager.getToken(context ?: return@launch)
+                if (token.isNullOrBlank()) {
+                    Log.e("WalletViewModel", "❌ No token found for KYC fetch")
+                    return@launch
+                }
+
+                Log.d("WalletViewModel", """
+                    🔍 Fetching KYC data...
+                    - Token: ${token.take(20)}...
+                    - Current KYC data: ${_kycData.value?.let { "${it.firstName} ${it.lastName}" } ?: "null"}
+                """.trimIndent())
+
+                val response = kycApiService.getMyKYC(token)
+                val parsedBody = response.body()
+                
+                Log.d("WalletViewModel", """
+                    📡 KYC API Response:
+                    - Code: ${response.code()}
+                    - Message: ${response.message()}
+                    - Is Successful: ${response.isSuccessful}
+                    - Response Body: $parsedBody
+                """.trimIndent())
+                
+                if (response.isSuccessful) {
+                    if (parsedBody != null) {
+                        _kycData.value = parsedBody
+                        Log.d("WalletViewModel", """
+                            ✅ KYC data fetched successfully:
+                            - First Name: ${parsedBody.firstName}
+                            - Last Name: ${parsedBody.lastName}
+                            - Full Name: ${parsedBody.firstName} ${parsedBody.lastName}
+                            - Date of Birth: ${parsedBody.dateOfBirth}
+                            - Current KYC State: ${_kycData.value?.let { "${it.firstName} ${it.lastName}" }}
+                        """.trimIndent())
+                        // Refresh cards to update names
+                        fetchUserCards()
+                    } else {
+                        Log.e("WalletViewModel", "❌ KYC response body is null")
+                    }
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("WalletViewModel", """
+                        ❌ Failed to fetch KYC data:
+                        - Code: ${response.code()}
+                        - Message: ${response.message()}
+                        - Error Body: $errorBody
+                    """.trimIndent())
+                }
+            } catch (e: Exception) {
+                Log.e("WalletViewModel", """
+                    ❌ Error fetching KYC data:
+                    - Error: ${e.message}
+                    - Stack trace: ${e.stackTraceToString()}
+                """.trimIndent())
+            }
+        }
+    }
+
+    fun updateCardColor(accountNumber: String, newColor: String) {
+        viewModelScope.launch {
+            try {
+                // Update the card color in the local storage
+                cardColorManager?.saveCardColor(accountNumber, newColor)
+                
+                // Update the card in the local state
+                _cards.value = _cards.value.map { cardState ->
+                    if (cardState.card.accountNumber == accountNumber) {
+                        CardState(
+                            card = cardState.card.copy(
+                                background = newColor
+                            ),
+                            isFlipped = cardState.isFlipped
+                        )
+                    } else {
+                        cardState
+                    }
+                }
+                
+                Log.d("WalletViewModel", "Card color updated for account $accountNumber to $newColor")
+            } catch (e: Exception) {
+                Log.e("WalletViewModel", "Error updating card color: ${e.message}")
             }
         }
     }

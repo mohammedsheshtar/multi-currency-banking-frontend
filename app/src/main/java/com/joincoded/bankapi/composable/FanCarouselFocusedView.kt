@@ -7,7 +7,10 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
@@ -44,9 +47,17 @@ import com.joincoded.bankapi.data.TransactionItem
 import com.joincoded.bankapi.data.response.TransactionHistoryResponse
 import com.joincoded.bankapi.network.RetrofitHelper
 import com.joincoded.bankapi.utils.TokenManager
+import com.joincoded.bankapi.composable.availableCardColors
+import com.joincoded.bankapi.utils.CardColorManager
 import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
 import java.util.UUID
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.foundation.lazy.rememberLazyListState
 
 @Composable
 fun FanCarouselFocusedView(
@@ -60,13 +71,43 @@ fun FanCarouselFocusedView(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
+    var currentFilter by remember { mutableStateOf(TransactionFilter.ALL) }
+    var showColorPicker by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val cardColorManager = remember { CardColorManager.getInstance(context) }
+    var selectedColor by remember { mutableStateOf(card.background) }
+    var previewColor by remember { mutableStateOf(card.background) }
 
     // Collect states from ViewModel
     val walletTransactions = walletViewModel.transactions.collectAsStateWithLifecycle()
     val isLoadingTransactions = walletViewModel.isLoadingTransactions.collectAsStateWithLifecycle()
     val transactionError = walletViewModel.transactionError.collectAsStateWithLifecycle()
+
+    // Filter transactions based on current filter
+    val filteredTransactions = remember(walletTransactions.value, currentFilter) {
+        val sortedTransactions = when (currentFilter) {
+            TransactionFilter.ALL -> walletTransactions.value
+            TransactionFilter.DEPOSITS -> walletTransactions.value.filter { !it.amount.startsWith("-") && !it.title.contains("Transfer", ignoreCase = true) }
+            TransactionFilter.WITHDRAWALS -> walletTransactions.value.filter { it.amount.startsWith("-") && !it.title.contains("Transfer", ignoreCase = true) }
+            TransactionFilter.TRANSFERS -> walletTransactions.value.filter { it.title.contains("Transfer", ignoreCase = true) }
+            TransactionFilter.RECENT -> walletTransactions.value
+            TransactionFilter.OLDEST -> walletTransactions.value.sortedBy { it.date }
+            TransactionFilter.HIGHEST_AMOUNT -> walletTransactions.value.sortedByDescending { 
+                it.amount.replace("-", "").toDoubleOrNull() ?: 0.0 
+            }
+            TransactionFilter.LOWEST_AMOUNT -> walletTransactions.value.sortedBy { 
+                it.amount.replace("-", "").toDoubleOrNull() ?: 0.0 
+            }
+        }
+        
+        // Always sort by date in descending order except for explicit sorting filters
+        when (currentFilter) {
+            TransactionFilter.OLDEST -> sortedTransactions
+            TransactionFilter.HIGHEST_AMOUNT, TransactionFilter.LOWEST_AMOUNT -> sortedTransactions
+            else -> sortedTransactions.sortedByDescending { it.date }
+        }
+    }
 
     // Log the card details for debugging
     Log.d("FanCarouselFocusedView", """
@@ -119,35 +160,110 @@ fun FanCarouselFocusedView(
         ) {
             PaymentCardView(
                 card = card,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp),
-                backgroundGradient = Brush.verticalGradient(
-                    listOf(Color(0xFF5E5280), Color.Black)
-                )
+                modifier = Modifier.size(width = 400.dp, height = 240.dp),
+                backgroundGradient = availableCardColors.find { it.name == (if (showColorPicker) previewColor else card.background) }?.gradient 
+                    ?: availableCardColors[0].gradient,
+                isFocused = true
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Service Actions Row
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                services.forEach { service ->
+            // Either show services with edit icon or color picker
+            if (showColorPicker) {
+                // Color Picker Section
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                ) {
+                    val lazyListState = rememberLazyListState()
+                    
+                    LazyRow(
+                        state = lazyListState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(end = 72.dp), // Space for the confirm button
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(availableCardColors) { colorOption ->
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(colorOption.gradient)
+                                    .border(
+                                        width = 2.dp,
+                                        color = if (previewColor == colorOption.name) 
+                                            Color(0xFFB297E7) 
+                                        else 
+                                            Color.Transparent,
+                                        shape = CircleShape
+                                    )
+                                    .clickable {
+                                        previewColor = colorOption.name
+                                        selectedColor = colorOption.name
+                                    }
+                            )
+                        }
+                    }
+
+                    // Confirm button
+                    FloatingActionButton(
+                        onClick = {
+                            walletViewModel.updateCardColor(card.accountNumber, selectedColor)
+                            showColorPicker = false
+                        },
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .size(48.dp),
+                        containerColor = Color(0xFFB297E7),
+                        contentColor = Color.White
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Confirm Color"
+                        )
+                    }
+                }
+            } else {
+                // Service Actions Row with Edit Icon
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Regular services
+                    services.forEach { service ->
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF1A1A1D))
+                                .clickable { service.onClick() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CompositionLocalProvider(LocalContentColor provides Color(0xFFB297E7)) {
+                                Box(modifier = Modifier.size(28.dp)) {
+                                    service.icon()
+                                }
+                            }
+                        }
+                    }
+
+                    // Edit icon as part of services
                     Box(
                         modifier = Modifier
                             .size(56.dp)
                             .clip(CircleShape)
                             .background(Color(0xFF1A1A1D))
-                            .clickable { service.onClick() },
+                            .clickable { showColorPicker = true },
                         contentAlignment = Alignment.Center
                     ) {
-                        CompositionLocalProvider(LocalContentColor provides Color(0xFFB297E7)) {
-                            Box(modifier = Modifier.size(28.dp)) {
-                                service.icon()
-                            }
-                        }
+                        Icon(
+                            painter = painterResource(id = R.drawable.baseline_edit_square_24),
+                            contentDescription = "Edit Card Color",
+                            tint = Color(0xFFB297E7),
+                            modifier = Modifier.size(28.dp)
+                        )
                     }
                 }
             }
@@ -185,24 +301,20 @@ fun FanCarouselFocusedView(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        FilterOptionsButton(
-                            onFilterSelected = { selectedFilter ->
-                                println("Selected Filter: $selectedFilter")
-                                walletViewModel.fetchTransactionHistory(card.accountNumber, true)
-                            }
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "Recent Transactions",
-                            color = Color(0xFFB297E7),
-                            fontSize = 25.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    // Left side: Filter button
+                    FilterOptionsButton(
+                        currentFilter = currentFilter,
+                        onFilterSelected = { filter ->
+                            currentFilter = filter
+                        }
+                    )
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Add refresh button
+                    // Right side: Refresh and expand buttons
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Refresh button
                         IconButton(
                             onClick = { walletViewModel.fetchTransactionHistory(card.accountNumber, true) },
                             modifier = Modifier.size(24.dp)
@@ -213,18 +325,23 @@ fun FanCarouselFocusedView(
                                 tint = Color(0xFFB297E7)
                             )
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(
-                            painter = painterResource(
-                                id = if (expanded)
-                                    R.drawable.baseline_keyboard_double_arrow_down_24
-                                else
-                                    R.drawable.baseline_keyboard_double_arrow_up_24
-                            ),
-                            contentDescription = "Toggle Sheet",
-                            tint = Color(0xFFB297E7),
+
+                        // Expand/Collapse button
+                        IconButton(
+                            onClick = { expanded = !expanded },
                             modifier = Modifier.size(24.dp)
-                        )
+                        ) {
+                            Icon(
+                                painter = painterResource(
+                                    id = if (expanded)
+                                        R.drawable.baseline_keyboard_double_arrow_down_24
+                                    else
+                                        R.drawable.baseline_keyboard_double_arrow_up_24
+                                ),
+                                contentDescription = "Toggle Sheet",
+                                tint = Color(0xFFB297E7)
+                            )
+                        }
                     }
                 }
 
@@ -263,7 +380,7 @@ fun FanCarouselFocusedView(
                                 )
                             }
                         }
-                    } else if (walletTransactions.value.isEmpty()) {
+                    } else if (filteredTransactions.isEmpty()) {
                         item {
                             Box(
                                 modifier = Modifier
@@ -272,14 +389,20 @@ fun FanCarouselFocusedView(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    "No transactions found",
+                                    when (currentFilter) {
+                                        TransactionFilter.ALL -> "No transactions found"
+                                        TransactionFilter.DEPOSITS -> "No deposits found"
+                                        TransactionFilter.WITHDRAWALS -> "No withdrawals found"
+                                        TransactionFilter.TRANSFERS -> "No transfers found"
+                                        else -> "No transactions found"
+                                    },
                                     color = Color.Gray,
                                     fontSize = 16.sp
                                 )
                             }
                         }
                     } else {
-                        items(walletTransactions.value) { tx ->
+                        items(filteredTransactions) { tx ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()

@@ -4,6 +4,8 @@ import java.io.Serializable
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
+import android.util.Log
+import com.google.gson.annotations.SerializedName
 
 data class TokenResponse(val token: String?) {
     fun getBearerToken(): String {
@@ -18,7 +20,8 @@ data class ListAccountResponse(
     val accountType: String,
     val createdAt: LocalDateTime,
     val countryCode: String,
-    val symbol: String
+    val symbol: String,
+    val cardColor: String? = null
 )
 
 data class CreateAccountResponse(
@@ -37,7 +40,8 @@ data class AuthenticationResponse(
 data class KYCResponse(
     val firstName: String,
     val lastName: String,
-    val dateOfBirth: LocalDate,
+    @SerializedName("dateOfBirth")
+    private val dateOfBirthStr: String,
     val civilId: String,
     val country: String,
     val phoneNumber: String,
@@ -45,7 +49,15 @@ data class KYCResponse(
     val salary: BigDecimal,
     val tier: String,
     val points: Int
-)
+) {
+    val dateOfBirth: LocalDate
+        get() = try {
+            LocalDate.parse(dateOfBirthStr)
+        } catch (e: Exception) {
+            Log.e("KYCResponse", "Error parsing date: $dateOfBirthStr", e)
+            LocalDate.now()
+        }
+}
 
 data class ListMembershipResponse(
     val tierName: String,

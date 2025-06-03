@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -32,38 +33,62 @@ import androidx.compose.ui.window.DialogProperties
 import com.joincoded.bankapi.ViewModel.WalletViewModel
 import kotlinx.coroutines.launch
 
-data class AccountTheme(
-    val name: String,
-    val gradient: Brush,
-    val countryCode: String,
-    val currency: String
+data class CurrencyOption(
+    val code: String,      // ISO currency code (e.g., "USD")
+    val symbol: String,    // Currency symbol (e.g., "$")
+    val name: String       // Full currency name (e.g., "US Dollar")
 )
 
-val accountThemes = listOf(
-    AccountTheme(
-        name = "AED",
-        gradient = Brush.verticalGradient(listOf(Color(0xFF070709), Color(0xFF9E85CB))),
-        countryCode = "AED",
-        currency = "د.إ"
-    ),
-    AccountTheme(
-        name = "KWD",
-        gradient = Brush.verticalGradient(listOf(Color(0xFF352F3F), Color(0xFF000000))),
-        countryCode = "KWD",
-        currency = "د.ك"
-    ),
-    AccountTheme(
-        name = "USD",
-        gradient = Brush.verticalGradient(listOf(Color(0xFF423F4F), Color(0xFF2A282A))),
-        countryCode = "USD",
-        currency = "$"
-    ),
-    AccountTheme(
-        name = "EUR",
-        gradient = Brush.verticalGradient(listOf(Color(0xFF1D1B2C), Color(0xFF7B699B))),
-        countryCode = "EUR",
-        currency = "€"
+data class CardColorOption(
+    val name: String,      // Color name (e.g., "Purple Gradient")
+    val gradient: Brush    // Card gradient for preview
+)
+
+val availableCurrencies = listOf(
+    // Middle Eastern Currencies
+    CurrencyOption("AED", "د.إ", "UAE Dirham"),
+    CurrencyOption("KWD", "د.ك", "Kuwaiti Dinar"),
+    CurrencyOption("SAR", "ر.س", "Saudi Riyal"),
+    CurrencyOption("QAR", "ر.ق", "Qatari Riyal"),
+    CurrencyOption("OMR", "ر.ع", "Omani Rial"),
+    CurrencyOption("BHD", "د.ب", "Bahraini Dinar"),
+    CurrencyOption("EGP", "ج.م", "Egyptian Pound"),
+    
+    // Major Global Currencies
+    CurrencyOption("USD", "$", "US Dollar"),
+    CurrencyOption("EUR", "€", "Euro"),
+    CurrencyOption("GBP", "£", "British Pound"),
+    CurrencyOption("JPY", "¥", "Japanese Yen"),
+    CurrencyOption("CNY", "元", "Chinese Yuan"),
+    
+    // Asian Currencies
+    CurrencyOption("INR", "₹", "Indian Rupee"),
+    CurrencyOption("KRW", "₩", "South Korean Won"),
+    CurrencyOption("SGD", "S$", "Singapore Dollar"),
+    CurrencyOption("MYR", "RM", "Malaysian Ringgit"),
+    
+    // Other Major Currencies
+    CurrencyOption("AUD", "A$", "Australian Dollar"),
+    CurrencyOption("CAD", "C$", "Canadian Dollar"),
+    CurrencyOption("CHF", "₣", "Swiss Franc"),
+    CurrencyOption("NZD", "NZ$", "New Zealand Dollar")
+)
+
+val availableCardColors = listOf(
+    CardColorOption("Purple Gradient", Brush.verticalGradient(listOf(Color(0xFF070709), Color(0xFF9E85CB)))),
+    CardColorOption("Dark Purple", Brush.verticalGradient(listOf(Color(0xFF352F3F), Color(0xFF000000)))),
+    CardColorOption("Lavendor Gradient", Brush.verticalGradient(listOf(Color(0xFF9E85CB), Color(0xFF070709)))),
+
+    CardColorOption("Deep Purple", Brush.verticalGradient(listOf(Color(0xFF1D1B2C), Color(0xFF7B699B)))),
+    CardColorOption("Dark Gray", Brush.verticalGradient(listOf(Color(0xFF15101C), Color(0xFF53426B)))),
+    CardColorOption("Royal Purple", Brush.verticalGradient(listOf(Color(0xFF2D273B), Color(
+        0xFFDDCFEF
     )
+    ))),
+    CardColorOption("Drak", Brush.verticalGradient(listOf(Color(0xFF19161E), Color(0xFF5C4F62)))),
+
+            CardColorOption("Lavender", Brush.verticalGradient(listOf(Color(0xFF382F44), Color(0xFFF4F4F6)))),
+    CardColorOption("Mauve", Brush.verticalGradient(listOf(Color(0xFFA882F6), Color(0xFFDFCAE7))))
 )
 
 val accountTypes = listOf("Online", "Savings", "Business", "Checking", "Digital")
@@ -77,9 +102,12 @@ fun CreateAccountScreen(
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showSuccessDialog by remember { mutableStateOf(false) }
-    var selectedTheme by remember { mutableStateOf(accountThemes[0]) }
+    var selectedCurrency by remember { mutableStateOf(availableCurrencies[0]) }
+    var selectedCardColor by remember { mutableStateOf(availableCardColors[0]) }
     var selectedType by remember { mutableStateOf(accountTypes[0]) }
     var initialBalance by remember { mutableStateOf("10000") }
+    var showCurrencyDropdown by remember { mutableStateOf(false) }
+    var showAccountTypeDropdown by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     // Add BackHandler
@@ -136,7 +164,7 @@ fun CreateAccountScreen(
                     .fillMaxWidth()
                     .height(200.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(selectedTheme.gradient)
+                    .background(selectedCardColor.gradient)
                     .padding(16.dp)
             ) {
                 Column(
@@ -156,7 +184,7 @@ fun CreateAccountScreen(
                             color = Color.White
                         )
                         Text(
-                            "Balance: ${initialBalance} ${selectedTheme.currency}",
+                            "Balance: ${initialBalance} ${selectedCurrency.symbol}",
                             style = MaterialTheme.typography.bodyLarge,
                             color = Color.White.copy(alpha = 0.8f)
                         )
@@ -166,47 +194,175 @@ fun CreateAccountScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Currency Selection
-            Text(
-                "Select Currency",
-                style = MaterialTheme.typography.titleMedium,
-                color = Color.White
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
+            // Account Type and Currency Selection Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(accountThemes) { theme ->
+                // Account Type Selection
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        "Select Account Type",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
                     Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(theme.gradient)
-                            .border(
-                                width = 2.dp,
-                                color = if (theme == selectedTheme) Color(0xFFB297E7) else Color.Transparent,
-                                shape = CircleShape
-                            )
-                            .clickable { selectedTheme = theme },
-                        contentAlignment = Alignment.Center
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(
-                            theme.name,
-                            color = Color.White,
-                            style = MaterialTheme.typography.bodyMedium
+                        OutlinedTextField(
+                            value = selectedType,
+                            onValueChange = { },
+                            readOnly = true,
+                            trailingIcon = {
+                                IconButton(onClick = { showAccountTypeDropdown = true }) {
+                                    Icon(
+                                        Icons.Default.ArrowDropDown,
+                                        contentDescription = "Select Account Type",
+                                        tint = Color.White
+                                    )
+                                }
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                cursorColor = Color(0xFFB297E7),
+                                focusedContainerColor = Color(0xFF27272A),
+                                unfocusedContainerColor = Color(0xFF27272A)
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
                         )
+
+                        DropdownMenu(
+                            expanded = showAccountTypeDropdown,
+                            onDismissRequest = { showAccountTypeDropdown = false },
+                            modifier = Modifier
+                                .fillMaxWidth(0.9f)
+                                .background(Color(0xFF27272A))
+                        ) {
+                            accountTypes.forEach { type ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            type,
+                                            color = Color.White
+                                        )
+                                    },
+                                    onClick = {
+                                        selectedType = type
+                                        showAccountTypeDropdown = false
+                                    },
+                                    colors = MenuDefaults.itemColors(
+                                        textColor = Color.White,
+                                        leadingIconColor = Color.White,
+                                        trailingIconColor = Color.White,
+                                        disabledTextColor = Color.Gray,
+                                        disabledLeadingIconColor = Color.Gray,
+                                        disabledTrailingIconColor = Color.Gray
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Currency Selection Dropdown
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        "Select Currency",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Box(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = selectedCurrency.code,
+                            onValueChange = { },
+                            readOnly = true,
+                            trailingIcon = {
+                                IconButton(onClick = { showCurrencyDropdown = true }) {
+                                    Icon(
+                                        Icons.Default.ArrowDropDown,
+                                        contentDescription = "Select Currency",
+                                        tint = Color.White
+                                    )
+                                }
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                cursorColor = Color(0xFFB297E7),
+                                focusedContainerColor = Color(0xFF27272A),
+                                unfocusedContainerColor = Color(0xFF27272A)
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        DropdownMenu(
+                            expanded = showCurrencyDropdown,
+                            onDismissRequest = { showCurrencyDropdown = false },
+                            modifier = Modifier
+                                .fillMaxWidth(0.9f)
+                                .background(Color(0xFF27272A))
+                        ) {
+                            availableCurrencies.forEach { currency ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                "${currency.code} - ${currency.name}",
+                                                color = Color.White
+                                            )
+                                            Text(
+                                                currency.symbol,
+                                                color = Color.White.copy(alpha = 0.7f)
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        selectedCurrency = currency
+                                        showCurrencyDropdown = false
+                                    },
+                                    colors = MenuDefaults.itemColors(
+                                        textColor = Color.White,
+                                        leadingIconColor = Color.White,
+                                        trailingIconColor = Color.White,
+                                        disabledTextColor = Color.Gray,
+                                        disabledLeadingIconColor = Color.Gray,
+                                        disabledTrailingIconColor = Color.Gray
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Account Type Selection
+            // Color Selection
             Text(
-                "Select Account Type",
+                "Select Card Color",
                 style = MaterialTheme.typography.titleMedium,
                 color = Color.White
             )
@@ -217,15 +373,18 @@ fun CreateAccountScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                items(accountTypes) { type ->
-                    FilterChip(
-                        selected = type == selectedType,
-                        onClick = { selectedType = type },
-                        label = { Text(type) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Color(0xFFB297E7),
-                            selectedLabelColor = Color.White
-                        )
+                items(availableCardColors) { color ->
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(color.gradient)
+                            .border(
+                                width = 2.dp,
+                                color = if (color == selectedCardColor) Color(0xFFB297E7) else Color.Transparent,
+                                shape = CircleShape
+                            )
+                            .clickable { selectedCardColor = color }
                     )
                 }
             }
@@ -254,7 +413,7 @@ fun CreateAccountScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
-                prefix = { Text(selectedTheme.currency, color = Color.White.copy(alpha = 0.7f)) },
+                prefix = { Text(selectedCurrency.symbol, color = Color.White.copy(alpha = 0.7f)) },
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(
                     fontSize = 16.sp
@@ -280,8 +439,9 @@ fun CreateAccountScreen(
                     errorMessage = null
                     walletViewModel.createAccount(
                         initialBalance = initialBalance,
-                        countryCode = selectedTheme.countryCode,
+                        countryCode = selectedCurrency.code,
                         accountType = selectedType,
+                        cardColor = selectedCardColor.name,
                         onSuccess = {
                             showSuccessDialog = true
                             isLoading = false
@@ -383,8 +543,9 @@ fun CreateAccountScreen(
 
                     Text(
                         "Your new ${selectedType} account has been created successfully.\n\n" +
-                        "Initial Balance: ${initialBalance} ${selectedTheme.currency}\n" +
-                        "Currency: ${selectedTheme.name}\n\n" +
+                        "Initial Balance: ${initialBalance} ${selectedCurrency.symbol}\n" +
+                        "Currency: ${selectedCurrency.code}\n" +
+                        "Card Color: ${selectedCardColor.name}\n\n" +
                         "The account has been added to your wallet.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White.copy(alpha = 0.7f),

@@ -1,5 +1,6 @@
 package com.joincoded.bankapi.composable
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -47,12 +48,33 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.activity.compose.BackHandler
+import com.joincoded.bankapi.composable.availableCardColors
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalView
+import android.app.Activity
+import com.joincoded.bankapi.utils.BiometricManager
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.LifecycleOwner
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.draw.scale
+import android.content.ContextWrapper
+import androidx.activity.ComponentActivity
 
+@SuppressLint("RememberReturnType")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransferToOthersScreen(
@@ -71,17 +93,32 @@ fun TransferToOthersScreen(
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     val context = LocalContext.current
-    var modalScale by remember { mutableStateOf(0.8f) }
-    var modalAlpha by remember { mutableStateOf(0f) }
-
-    // Add BackHandler after state declarations
-    BackHandler {
-        if (!isLoading && !showModal) {
-            onBack()
+    val activity = remember(context) {
+        when (context) {
+            is ComponentActivity -> context
+            is ContextWrapper -> {
+                var currentContext = context.baseContext
+                while (currentContext is ContextWrapper) {
+                    if (currentContext is ComponentActivity) {
+                        return@remember currentContext
+                    }
+                    currentContext = currentContext.baseContext
+                }
+                null
+            }
+            else -> null
         }
     }
-
-    // Animation for modal appearance
+    val biometricManager = remember { BiometricManager(context) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    
+    var modalScale by remember { mutableStateOf(0.8f) }
+    var modalAlpha by remember { mutableStateOf(0f) }
+    var showBiometricPrompt by remember { mutableStateOf(false) }
+    var isBiometricAvailable by remember { mutableStateOf(false) }
+    
     LaunchedEffect(showModal) {
         if (showModal) {
             modalScale = 1f
@@ -92,16 +129,147 @@ fun TransferToOthersScreen(
         }
     }
 
-    // Add currency code mapping function
+    LaunchedEffect(Unit) {
+        isBiometricAvailable = biometricManager.canAuthenticate()
+        Log.d("Biometric", "Biometric available: $isBiometricAvailable")
+    }
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.9f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "iconScale"
+    )
+
+    val rotation by animateFloatAsState(
+        targetValue = if (isPressed) 5f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "iconRotation"
+    )
+
+    BackHandler {
+        if (!isLoading && !showModal) {
+            onBack()
+        }
+    }
+
     fun getCurrencyCode(symbol: String): String {
         return when (symbol) {
+            // Middle Eastern Currencies
             "د.إ" -> "AED"  // UAE Dirham
             "د.ك" -> "KWD"  // Kuwaiti Dinar
             "ر.س" -> "SAR"  // Saudi Riyal
             "ر.ق" -> "QAR"  // Qatari Riyal
             "ر.ع" -> "OMR"  // Omani Rial
             "د.ب" -> "BHD"  // Bahraini Dinar
-            else -> symbol
+            "ج.م" -> "EGP"  // Egyptian Pound
+            "ل.ل" -> "LBP"  // Lebanese Pound
+            "ل.ي" -> "LYD"  // Libyan Dinar
+            "د.ج" -> "DZD"  // Algerian Dinar
+            "د.م" -> "MAD"  // Moroccan Dirham
+            "د.ت" -> "TND"  // Tunisian Dinar
+            "ل.س" -> "SYP"  // Syrian Pound
+            "د.ا" -> "JOD"  // Jordanian Dinar
+            "ش.ل" -> "ILS"  // Israeli New Shekel
+            "ل.ر" -> "IRR"  // Iranian Rial
+            "ع.د" -> "IQD"  // Iraqi Dinar
+            "د.ي" -> "YER"  // Yemeni Rial
+
+            // Major Global Currencies
+            "€" -> "EUR"    // Euro
+            "$" -> "USD"    // US Dollar
+            "£" -> "GBP"    // British Pound
+            "¥" -> "JPY"    // Japanese Yen
+            "₹" -> "INR"    // Indian Rupee
+            "₽" -> "RUB"    // Russian Ruble
+            "₩" -> "KRW"    // South Korean Won
+            "₴" -> "UAH"    // Ukrainian Hryvnia
+            "₫" -> "VND"    // Vietnamese Dong
+            "₱" -> "PHP"    // Philippine Peso
+            "₨" -> "PKR"    // Pakistani Rupee
+            "₪" -> "ILS"    // Israeli New Shekel
+            "₮" -> "MNT"    // Mongolian Tugrik
+            "₲" -> "PYG"    // Paraguayan Guarani
+            "₸" -> "KZT"    // Kazakhstani Tenge
+            "₺" -> "TRY"    // Turkish Lira
+            "₼" -> "AZN"    // Azerbaijani Manat
+            "₾" -> "GEL"    // Georgian Lari
+            "₿" -> "BTC"    // Bitcoin (for crypto support)
+
+            // Asian Currencies
+            "元" -> "CNY"    // Chinese Yuan
+            "円" -> "JPY"    // Japanese Yen (alternative symbol)
+            "₩" -> "KRW"    // South Korean Won
+            "฿" -> "THB"    // Thai Baht
+            "₫" -> "VND"    // Vietnamese Dong
+            "₱" -> "PHP"    // Philippine Peso
+            "₨" -> "PKR"    // Pakistani Rupee
+            "৳" -> "BDT"    // Bangladeshi Taka
+            "₨" -> "NPR"    // Nepalese Rupee
+            "රු" -> "LKR"    // Sri Lankan Rupee
+            "៛" -> "KHR"    // Cambodian Riel
+            "₭" -> "LAK"    // Lao Kip
+            "₮" -> "MNT"    // Mongolian Tugrik
+            "₸" -> "KZT"    // Kazakhstani Tenge
+
+            // European Currencies
+            "€" -> "EUR"    // Euro
+            "£" -> "GBP"    // British Pound
+            "₣" -> "CHF"    // Swiss Franc
+            "kr" -> "SEK"   // Swedish Krona
+            "kr" -> "NOK"   // Norwegian Krone
+            "kr" -> "DKK"   // Danish Krone
+            "zł" -> "PLN"   // Polish Złoty
+            "Ft" -> "HUF"   // Hungarian Forint
+            "Kč" -> "CZK"   // Czech Koruna
+            "lei" -> "RON"  // Romanian Leu
+            "лв" -> "BGN"   // Bulgarian Lev
+            "kn" -> "HRK"   // Croatian Kuna
+            "ден" -> "MKD"  // Macedonian Denar
+            "лв" -> "MDL"   // Moldovan Leu
+            "₴" -> "UAH"    // Ukrainian Hryvnia
+
+            // American Currencies
+            "$" -> "USD"    // US Dollar
+            "C$" -> "CAD"   // Canadian Dollar
+            "Mex$" -> "MXN" // Mexican Peso
+            "R$" -> "BRL"   // Brazilian Real
+            "S/." -> "PEN"  // Peruvian Sol
+            "$" -> "ARS"    // Argentine Peso
+            "$" -> "CLP"    // Chilean Peso
+            "$" -> "COP"    // Colombian Peso
+            "Bs" -> "VES"   // Venezuelan Bolívar
+            "Gs" -> "PYG"   // Paraguayan Guarani
+            "$ U" -> "UYU"   // Uruguayan Peso
+
+            // African Currencies
+            "R" -> "ZAR"    // South African Rand
+            "₦" -> "NGN"    // Nigerian Naira
+            "KSh" -> "KES"  // Kenyan Shilling
+            "TSh" -> "TZS"  // Tanzanian Shilling
+            "USh" -> "UGX"  // Ugandan Shilling
+            "CFA" -> "XAF"  // Central African CFA Franc
+            "CFA" -> "XOF"  // West African CFA Franc
+            "د.ج" -> "DZD"  // Algerian Dinar
+            "د.م" -> "MAD"  // Moroccan Dirham
+            "د.ت" -> "TND"  // Tunisian Dinar
+            "ج.م" -> "EGP"  // Egyptian Pound
+            "ل.ل" -> "LBP"  // Lebanese Pound
+            "ل.ي" -> "LYD"  // Libyan Dinar
+
+            // Oceanian Currencies
+            "A$" -> "AUD"   // Australian Dollar
+            "NZ$" -> "NZD"  // New Zealand Dollar
+            "FJ$" -> "FJD"  // Fijian Dollar
+            "T$" -> "TOP"   // Tongan Paʻanga
+            "WS$" -> "WST"  // Samoan Tālā
+
+            else -> symbol  // Fallback to the symbol if not recognized
         }
     }
 
@@ -143,9 +311,8 @@ fun TransferToOthersScreen(
                 .fillMaxWidth()
                 .height(220.dp)
                 .padding(bottom = 24.dp),
-            backgroundGradient = Brush.verticalGradient(
-                listOf(Color(0xFF5E5280), Color.Black)
-            )
+            backgroundGradient = availableCardColors.find { it.name == fromCard.background }?.gradient 
+                ?: availableCardColors[0].gradient
         )
 
         // Amount Input
@@ -317,122 +484,247 @@ fun TransferToOthersScreen(
 
                             Spacer(modifier = Modifier.height(32.dp))
 
-                            Button(
-                                onClick = {
-                                    isLoading = true
-                                    coroutineScope.launch {
-                                        try {
-                                            val token = TokenManager.getToken(context)
-                                            if (token == null) {
-                                                Log.e("TransferToOthers", "❌ No token found in storage")
-                                                showError = "Authentication required"
-                                                isLoading = false
-                                                return@launch
-                                            }
-                                            Log.d("TransferToOthers", "✅ Token retrieved: ${token.take(20)}...")
+                            if (isBiometricAvailable && !showBiometricPrompt) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(120.dp)
+                                        .scale(scale)
+                                        .rotate(rotation)
+                                        .clickable(
+                                            interactionSource = interactionSource,
+                                            indication = null
+                                        ) {
+                                            Log.d("Biometric", "Fingerprint icon clicked")
+                                            showBiometricPrompt = true
+                                            if (activity != null) {
+                                                Log.d("Biometric", "Starting biometric authentication with activity: ${activity.javaClass.simpleName}")
+                                                biometricManager.authenticate(
+                                                    activity = activity as FragmentActivity,
+                                                    onSuccess = {
+                                                        Log.d("Biometric", "Authentication successful")
+                                                        showBiometricPrompt = false
+                                                        isLoading = true
+                                                        coroutineScope.launch {
+                                                            try {
+                                                                val token = TokenManager.getToken(context)
+                                                                if (token == null) {
+                                                                    Log.e("TransferToOthers", "❌ No token found in storage")
+                                                                    showError = "Authentication required"
+                                                                    isLoading = false
+                                                                    return@launch
+                                                                }
+                                                                Log.d("TransferToOthers", "✅ Token retrieved: ${token.take(20)}...")
 
-                                            val transferLinkRequest = TransferLinkRequest(
-                                                accountNumber = fromCard.accountNumber,
-                                                amount = amount.toDoubleOrNull() ?: 0.0,
-                                                currencyCode = getCurrencyCode(fromCard.currency)
-                                            )
-                                            Log.d("TransferToOthers", """
-                                                🔄 Generating transfer link with request:
-                                                - Account Number: ${transferLinkRequest.accountNumber}
-                                                - Amount: ${transferLinkRequest.amount}
-                                                - Currency Code: ${transferLinkRequest.currencyCode} (converted from ${fromCard.currency})
-                                            """.trimIndent())
-                                            
-                                            val response = RetrofitHelper.TransactionApi.generateTransferLink(
-                                                token = token,
-                                                request = transferLinkRequest
-                                            )
-                                            
-                                            Log.d("TransferToOthers", """
-                                                📥 Raw Response:
-                                                - Code: ${response.code()}
-                                                - Message: ${response.message()}
-                                                - Is Successful: ${response.isSuccessful}
-                                                - Error Body: ${response.errorBody()?.string()}
-                                                - Raw Response Body: ${response.body()?.toString()}
-                                                - Link ID: ${response.body()?.linkId}
-                                                - Link: ${response.body()?.link}
-                                                - Amount: ${response.body()?.amount}
-                                                - Currency: ${response.body()?.currency}
-                                                - Sender Name: ${response.body()?.senderName}
-                                                - Sender Account: ${response.body()?.senderAccount}
-                                                - Recipient Name: ${response.body()?.recipientName}
-                                                - Recipient Phone: ${response.body()?.recipientPhone}
-                                                - Expires At: ${response.body()?.expiresAt}
-                                                - Is Used: ${response.body()?.isUsed}
-                                            """.trimIndent())
-                                            
-                                            if (response.isSuccessful) {
-                                                val responseBody = response.body()
-                                                if (responseBody != null) {
-                                                    transferLink = responseBody
-                                                    Log.d("TransferToOthers", """
-                                                        ✅ Transfer link generated successfully:
-                                                        - Link ID: ${transferLink?.linkId}
-                                                        - Link: ${transferLink?.link}
-                                                        - Amount: ${transferLink?.amount}
-                                                        - Currency: ${transferLink?.currency}
-                                                        - Sender Name: ${transferLink?.senderName}
-                                                        - Sender Account: ${transferLink?.senderAccount}
-                                                        - Recipient Name: ${transferLink?.recipientName}
-                                                        - Recipient Phone: ${transferLink?.recipientPhone}
-                                                        - Expires At: ${transferLink?.expiresAt}
-                                                        - Is Used: ${transferLink?.isUsed}
-                                                    """.trimIndent())
-                                                    isLinkGenerated = true
-                                                    showSuccess = true
-                                                    amount = ""
-                                                } else {
-                                                    Log.e("TransferToOthers", "❌ Response body is null despite successful response")
-                                                    showError = "Failed to generate transfer link: Response body is null"
-                                                    showModal = false
-                                                }
+                                                                val transferLinkRequest = TransferLinkRequest(
+                                                                    accountNumber = fromCard.accountNumber,
+                                                                    amount = amount.toDoubleOrNull() ?: 0.0,
+                                                                    currencyCode = getCurrencyCode(fromCard.currency)
+                                                                )
+                                                                Log.d("TransferToOthers", """
+                                                                    🔄 Generating transfer link with request:
+                                                                    - Account Number: ${transferLinkRequest.accountNumber}
+                                                                    - Amount: ${transferLinkRequest.amount}
+                                                                    - Currency Code: ${transferLinkRequest.currencyCode} (converted from ${fromCard.currency})
+                                                                """.trimIndent())
+                                                                
+                                                                val response = RetrofitHelper.TransactionApi.generateTransferLink(
+                                                                    token = token,
+                                                                    request = transferLinkRequest
+                                                                )
+                                                                
+                                                                Log.d("TransferToOthers", """
+                                                                    📥 Raw Response:
+                                                                    - Code: ${response.code()}
+                                                                    - Message: ${response.message()}
+                                                                    - Is Successful: ${response.isSuccessful}
+                                                                    - Error Body: ${response.errorBody()?.string()}
+                                                                    - Raw Response Body: ${response.body()?.toString()}
+                                                                    - Link ID: ${response.body()?.linkId}
+                                                                    - Link: ${response.body()?.link}
+                                                                    - Amount: ${response.body()?.amount}
+                                                                    - Currency: ${response.body()?.currency}
+                                                                    - Sender Name: ${response.body()?.senderName}
+                                                                    - Sender Account: ${response.body()?.senderAccount}
+                                                                    - Recipient Name: ${response.body()?.recipientName}
+                                                                    - Recipient Phone: ${response.body()?.recipientPhone}
+                                                                    - Expires At: ${response.body()?.expiresAt}
+                                                                    - Is Used: ${response.body()?.isUsed}
+                                                                """.trimIndent())
+                                                                
+                                                                if (response.isSuccessful) {
+                                                                    val responseBody = response.body()
+                                                                    if (responseBody != null) {
+                                                                        transferLink = responseBody
+                                                                        Log.d("TransferToOthers", """
+                                                                            ✅ Transfer link generated successfully:
+                                                                            - Link ID: ${transferLink?.linkId}
+                                                                            - Link: ${transferLink?.link}
+                                                                            - Amount: ${transferLink?.amount}
+                                                                            - Currency: ${transferLink?.currency}
+                                                                            - Sender Name: ${transferLink?.senderName}
+                                                                            - Sender Account: ${transferLink?.senderAccount}
+                                                                            - Recipient Name: ${transferLink?.recipientName}
+                                                                            - Recipient Phone: ${transferLink?.recipientPhone}
+                                                                            - Expires At: ${transferLink?.expiresAt}
+                                                                            - Is Used: ${transferLink?.isUsed}
+                                                                        """.trimIndent())
+                                                                        isLinkGenerated = true
+                                                                        showSuccess = true
+                                                                        amount = ""
+                                                                    } else {
+                                                                        Log.e("TransferToOthers", "❌ Response body is null despite successful response")
+                                                                        showError = "Failed to generate transfer link: Response body is null"
+                                                                        showModal = false
+                                                                    }
+                                                                } else {
+                                                                    val errorBody = response.errorBody()?.string()
+                                                                    Log.e("TransferToOthers", """
+                                                                        ❌ Failed to generate transfer link:
+                                                                        - Status Code: ${response.code()}
+                                                                        - Error Body: $errorBody
+                                                                    """.trimIndent())
+                                                                    showError = "Failed to generate transfer link: ${response.code()} - $errorBody"
+                                                                    showModal = false
+                                                                }
+                                                            } catch (e: Exception) {
+                                                                Log.e("Biometric", "Error generating link: ${e.message}")
+                                                                showError = "Failed to generate transfer link: ${e.message}"
+                                                                showModal = false
+                                                            } finally {
+                                                                isLoading = false
+                                                            }
+                                                        }
+                                                    },
+                                                    onError = { error ->
+                                                        Log.e("Biometric", "Authentication error: $error")
+                                                        showBiometricPrompt = false
+                                                        showError = error
+                                                        showModal = false
+                                                    },
+                                                    onFallback = {
+                                                        Log.d("Biometric", "Falling back to password")
+                                                        showBiometricPrompt = false
+                                                        isLoading = true
+                                                        coroutineScope.launch {
+                                                            try {
+                                                                val token = TokenManager.getToken(context)
+                                                                if (token == null) {
+                                                                    Log.e("TransferToOthers", "❌ No token found in storage")
+                                                                    showError = "Authentication required"
+                                                                    isLoading = false
+                                                                    return@launch
+                                                                }
+                                                                Log.d("TransferToOthers", "✅ Token retrieved: ${token.take(20)}...")
+
+                                                                val transferLinkRequest = TransferLinkRequest(
+                                                                    accountNumber = fromCard.accountNumber,
+                                                                    amount = amount.toDoubleOrNull() ?: 0.0,
+                                                                    currencyCode = getCurrencyCode(fromCard.currency)
+                                                                )
+                                                                Log.d("TransferToOthers", """
+                                                                    🔄 Generating transfer link with request:
+                                                                    - Account Number: ${transferLinkRequest.accountNumber}
+                                                                    - Amount: ${transferLinkRequest.amount}
+                                                                    - Currency Code: ${transferLinkRequest.currencyCode} (converted from ${fromCard.currency})
+                                                                """.trimIndent())
+                                                                
+                                                                val response = RetrofitHelper.TransactionApi.generateTransferLink(
+                                                                    token = token,
+                                                                    request = transferLinkRequest
+                                                                )
+                                                                
+                                                                Log.d("TransferToOthers", """
+                                                                    📥 Raw Response:
+                                                                    - Code: ${response.code()}
+                                                                    - Message: ${response.message()}
+                                                                    - Is Successful: ${response.isSuccessful}
+                                                                    - Error Body: ${response.errorBody()?.string()}
+                                                                    - Raw Response Body: ${response.body()?.toString()}
+                                                                    - Link ID: ${response.body()?.linkId}
+                                                                    - Link: ${response.body()?.link}
+                                                                    - Amount: ${response.body()?.amount}
+                                                                    - Currency: ${response.body()?.currency}
+                                                                    - Sender Name: ${response.body()?.senderName}
+                                                                    - Sender Account: ${response.body()?.senderAccount}
+                                                                    - Recipient Name: ${response.body()?.recipientName}
+                                                                    - Recipient Phone: ${response.body()?.recipientPhone}
+                                                                    - Expires At: ${response.body()?.expiresAt}
+                                                                    - Is Used: ${response.body()?.isUsed}
+                                                                """.trimIndent())
+                                                                
+                                                                if (response.isSuccessful) {
+                                                                    val responseBody = response.body()
+                                                                    if (responseBody != null) {
+                                                                        transferLink = responseBody
+                                                                        Log.d("TransferToOthers", """
+                                                                            ✅ Transfer link generated successfully:
+                                                                            - Link ID: ${transferLink?.linkId}
+                                                                            - Link: ${transferLink?.link}
+                                                                            - Amount: ${transferLink?.amount}
+                                                                            - Currency: ${transferLink?.currency}
+                                                                            - Sender Name: ${transferLink?.senderName}
+                                                                            - Sender Account: ${transferLink?.senderAccount}
+                                                                            - Recipient Name: ${transferLink?.recipientName}
+                                                                            - Recipient Phone: ${transferLink?.recipientPhone}
+                                                                            - Expires At: ${transferLink?.expiresAt}
+                                                                            - Is Used: ${transferLink?.isUsed}
+                                                                        """.trimIndent())
+                                                                        isLinkGenerated = true
+                                                                        showSuccess = true
+                                                                        amount = ""
+                                                                    } else {
+                                                                        Log.e("TransferToOthers", "❌ Response body is null despite successful response")
+                                                                        showError = "Failed to generate transfer link: Response body is null"
+                                                                        showModal = false
+                                                                    }
+                                                                } else {
+                                                                    val errorBody = response.errorBody()?.string()
+                                                                    Log.e("TransferToOthers", """
+                                                                        ❌ Failed to generate transfer link:
+                                                                        - Status Code: ${response.code()}
+                                                                        - Error Body: $errorBody
+                                                                    """.trimIndent())
+                                                                    showError = "Failed to generate transfer link: ${response.code()} - $errorBody"
+                                                                    showModal = false
+                                                                }
+                                                            } catch (e: Exception) {
+                                                                Log.e("Biometric", "Error in fallback: ${e.message}")
+                                                                showError = "Failed to generate transfer link: ${e.message}"
+                                                                showModal = false
+                                                            } finally {
+                                                                isLoading = false
+                                                            }
+                                                        }
+                                                    }
+                                                )
                                             } else {
-                                                val errorBody = response.errorBody()?.string()
-                                                Log.e("TransferToOthers", """
-                                                    ❌ Failed to generate transfer link:
-                                                    - Status Code: ${response.code()}
-                                                    - Error Body: $errorBody
-                                                """.trimIndent())
-                                                showError = "Failed to generate transfer link: ${response.code()} - $errorBody"
+                                                Log.e("Biometric", "Activity context not found. Context type: ${context.javaClass.simpleName}")
+                                                showError = "Unable to start biometric authentication"
                                                 showModal = false
                                             }
-                                        } catch (e: Exception) {
-                                            showError = "Failed to generate transfer link: ${e.message}"
-                                            showModal = false
-                                        } finally {
-                                            isLoading = false
-                                        }
-                                    }
-                                },
-                                enabled = !isLoading,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(56.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFFB297E7),
-                                    contentColor = Color.White,
-                                    disabledContainerColor = Color(0xFFB297E7).copy(alpha = 0.5f),
-                                    disabledContentColor = Color.White.copy(alpha = 0.5f)
-                                ),
-                                shape = RoundedCornerShape(28.dp)
-                            ) {
-                                if (isLoading) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
-                                        color = Color.White
-                                    )
-                                } else {
-                                    Text(
-                                        "Generate Link",
-                                        style = MaterialTheme.typography.titleMedium
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.baseline_fingerprint_24),
+                                        contentDescription = "Authenticate with biometric",
+                                        tint = Color(0xFFB297E7),
+                                        modifier = Modifier.size(80.dp)
                                     )
                                 }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                Text(
+                                    "Tap to authenticate",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.White.copy(alpha = 0.7f)
+                                )
+                            } else if (isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(64.dp),
+                                    color = Color(0xFFB297E7)
+                                )
                             }
                         } else {
                             // Success State with animations

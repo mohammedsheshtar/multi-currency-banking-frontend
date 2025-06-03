@@ -27,6 +27,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.min
+import android.util.Log
+import com.joincoded.bankapi.composable.availableCardColors
 
 @Composable
 fun CardStack(
@@ -121,12 +123,30 @@ fun CardStack(
 
         val isInteractive = focusedCard == null
 
-        val gradient = when (cards.indexOf(state.card) % 5) {
-            0 -> Brush.verticalGradient(listOf(Color(0xFF8E77BB), Color.Black))
-            1 -> Brush.verticalGradient(listOf(Color(0xFF231E31), Color.DarkGray))
-            2 -> Brush.verticalGradient(listOf(Color(0xFF1D162A), Color(0xFF9688B9)))
-            3 -> Brush.verticalGradient(listOf(Color(0xFF1C1926), Color(0xFF191623)))
-            else -> Brush.verticalGradient(listOf(Color.DarkGray, Color.Black))
+        val gradient = remember(state.card.background) {
+            Log.d("CardStack", """
+                Card Color Selection:
+                - Card Number: ${state.card.accountNumber}
+                - Background: ${state.card.background}
+                - Index: $index
+            """.trimIndent())
+
+            // Find the selected color in availableCardColors
+            val selectedColor = availableCardColors.find { it.name == state.card.background }?.gradient
+            if (selectedColor != null) {
+                Log.d("CardStack", "Using selected color: ${state.card.background}")
+                selectedColor
+            } else {
+                Log.d("CardStack", "No specific color selected, using index-based color")
+                // Use index-based colors as fallback
+                when (index % availableCardColors.size) {
+                    0 -> availableCardColors[0].gradient
+                    1 -> availableCardColors[1].gradient
+                    2 -> availableCardColors[2].gradient
+                    3 -> availableCardColors[3].gradient
+                    else -> availableCardColors[4].gradient
+                }
+            }
         }
 
         Box(
@@ -214,7 +234,8 @@ fun CardStack(
             PaymentCardView(
                 card = state.card,
                 modifier = Modifier.size(width = 400.dp, height = 240.dp),
-                backgroundGradient = gradient
+                backgroundGradient = gradient,
+                isFocused = state == focusedCard
             )
         }
     }

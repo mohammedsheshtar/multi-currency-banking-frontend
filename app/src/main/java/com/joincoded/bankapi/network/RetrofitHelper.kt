@@ -166,4 +166,8 @@ object RetrofitHelper {
     val KycApi: KycApiService by lazy {
         getRetrofitInstance().create(KycApiService::class.java)
     }
+
+    fun clearRetrofitInstance() {
+        retrofitInstance = null
+    }
 }
