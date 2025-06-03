@@ -1,10 +1,12 @@
 package com.joincoded.bankapi.composable
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,16 +20,30 @@ import androidx.compose.ui.unit.sp
 import com.joincoded.bankapi.data.response.ShopTransactionResponse
 import com.joincoded.bankapi.viewmodel.ShopHistoryViewModel
 import java.time.format.DateTimeFormatter
+import androidx.compose.material3.TextFieldDefaults
+import com.joincoded.bankapi.ui.theme.Accent
 
 @Composable
 fun ShopHistoryScreen(viewModel: ShopHistoryViewModel, token: String) {
     val transactions by viewModel.transactions.collectAsState()
     val error by viewModel.error.collectAsState()
 
+    var expanded by remember { mutableStateOf(false) }
+    var sortOption by remember { mutableStateOf("Newest First") }
+
     LaunchedEffect(token) {
-        println("⚡ token received in ShopHistoryScreen: $token")
-        viewModel.token = token // ✅ just the raw token
+        viewModel.token = token
         viewModel.fetchHistory()
+    }
+
+    val sortedTransactions = remember(transactions, sortOption) {
+        when (sortOption) {
+            "Newest First" -> transactions.sortedByDescending { it.timeOfTransaction }
+            "Oldest First" -> transactions.sortedBy { it.timeOfTransaction }
+            "Least Points" -> transactions.sortedBy { it.pointsSpent }
+            "Most Points" -> transactions.sortedByDescending { it.pointsSpent }
+            else -> transactions
+        }
     }
 
     Column(
@@ -35,19 +51,80 @@ fun ShopHistoryScreen(viewModel: ShopHistoryViewModel, token: String) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text("Purchase History", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text(
+            text = "X-Claimed",
+            color = Accent,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val menuWidth = maxWidth
+
+            Column {
+                TextField(
+                    value = sortOption,
+                    onValueChange = {},
+                    readOnly = true,
+                    trailingIcon = {
+                        IconButton(onClick = { expanded = !expanded }) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowDropDown,
+                                contentDescription = "Dropdown icon",
+                                tint = Color.LightGray
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFF2A2A2A),
+                        unfocusedContainerColor = Color(0xFF2A2A2A),
+                        disabledContainerColor = Color(0xFF2A2A2A),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        disabledTextColor = Color.White,
+                        cursorColor = Color.White
+                    )
+                )
+
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier
+                        .width(menuWidth)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFF2A2A2A))
+                ) {
+                    listOf("Newest First", "Oldest First", "Least Points", "Most Points").forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option, color = Color.White) },
+                            onClick = {
+                                sortOption = option
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(12.dp))
 
         when {
             error != null -> {
                 Text("Error: $error", color = Color.Red)
             }
-            transactions.isEmpty() -> {
+            sortedTransactions.isEmpty() -> {
                 Text("You haven't purchased anything yet.")
             }
             else -> {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(transactions) { txn ->
+                    items(sortedTransactions) { txn ->
                         ShopHistoryCard(txn)
                     }
                 }
@@ -55,7 +132,6 @@ fun ShopHistoryScreen(viewModel: ShopHistoryViewModel, token: String) {
         }
     }
 }
-
 
 @Composable
 fun ShopHistoryCard(txn: ShopTransactionResponse) {
@@ -68,7 +144,6 @@ fun ShopHistoryCard(txn: ShopTransactionResponse) {
         txn.timeOfTransaction
     }
 
-    // Define color by tier
     val tierColor = when (txn.itemTier.uppercase()) {
         "BRONZE" -> Color(0xFFCD7F32)
         "SILVER" -> Color(0xFFC0C0C0)
@@ -93,7 +168,6 @@ fun ShopHistoryCard(txn: ShopTransactionResponse) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Left icon
             Icon(
                 imageVector = Icons.Filled.Star,
                 contentDescription = "Tier Icon",
@@ -101,7 +175,6 @@ fun ShopHistoryCard(txn: ShopTransactionResponse) {
                 modifier = Modifier.size(36.dp)
             )
 
-            // Center content
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -130,7 +203,6 @@ fun ShopHistoryCard(txn: ShopTransactionResponse) {
                 )
             }
 
-            // Right content
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.Center
@@ -150,4 +222,3 @@ fun ShopHistoryCard(txn: ShopTransactionResponse) {
         }
     }
 }
-

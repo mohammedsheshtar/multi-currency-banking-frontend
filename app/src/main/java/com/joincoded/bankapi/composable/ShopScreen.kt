@@ -63,7 +63,7 @@ fun ShopPage(navController: NavController, token: String, shopViewModel: ShopVie
             .padding(16.dp)
     ) {
         Text(
-            text = "Xchange Shop",
+            text = "X-Shop",
             color = Accent,
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold
