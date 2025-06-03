@@ -18,7 +18,7 @@ data class AuthenticationRequest(
 class KYCRequest(
     val firstName: String,
     val lastName: String,
-    val dateOfBirth: LocalDate,
+    val dateOfBirth: String,
     val civilId: String,
     val country: String,
     val phoneNumber: String,

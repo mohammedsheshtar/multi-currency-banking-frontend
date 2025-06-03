@@ -11,6 +11,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -19,6 +20,7 @@ import com.joincoded.bankapi.composable.ExchangeRateScreen
 import com.joincoded.bankapi.composable.LoginScreen
 import com.joincoded.bankapi.composable.RegistrationScreen
 import com.joincoded.bankapi.ui.theme.BankAPITheme
+import com.joincoded.bankapi.viewmodel.AuthViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,10 +55,14 @@ fun AppNavigator(
     navController: NavHostController = rememberNavController(),
     startDestination: String = NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value
 ) {
-    var userToken by remember { mutableStateOf<String?>(null) }
+
 
     NavHost(navController = navController, startDestination = startDestination) {
         composable(NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value) {
+            val authViewModel: AuthViewModel = viewModel()
+            val token by authViewModel.token.collectAsState()
+            val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
+
             LoginScreen(
                 navController = navController,
                 onRegisterClick = {
@@ -65,7 +71,16 @@ fun AppNavigator(
                 onForgotPasswordClick = { println("Forgot password clicked") },
                 onSocialClick = { platform -> println("Social clicked: $platform") }
             )
+
+            LaunchedEffect(isLoggedIn, token) {
+                if (isLoggedIn && token != null) {
+                    navController.navigate("${NavRoutes.NAV_ROUTE_PROFILE_SCREEN.value}/$token") {
+                        popUpTo(NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value) { inclusive = true }
+                    }
+                }
+            }
         }
+
 
         composable(NavRoutes.NAV_ROUTE_REGISTRATION_SCREEN.value) {
             RegistrationScreen(navController = navController)
@@ -73,12 +88,14 @@ fun AppNavigator(
 
         composable("${NavRoutes.NAV_ROUTE_PROFILE_SCREEN.value}/{token}") { backStackEntry ->
             val token = backStackEntry.arguments?.getString("token") ?: ""
-            ProfileScreen(token = token, onLogout = {
-                userToken = null
-                navController.navigate(NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value) {
-                    popUpTo("${NavRoutes.NAV_ROUTE_PROFILE_SCREEN.value}/$token") { inclusive = true }
+            ProfileScreen(
+                token = token,
+                onLogout = {
+                    navController.navigate(NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value) {
+                        popUpTo(NavRoutes.NAV_ROUTE_PROFILE_SCREEN.value) { inclusive = true }
+                    }
                 }
-            })
+            )
         }
     }
 }

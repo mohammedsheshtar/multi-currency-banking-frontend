@@ -108,7 +108,7 @@ interface TransactionApiService {
 
 interface UserApiService {
     @POST("api/v1/authentication/register")
-    suspend fun registerUser(@Body request: CreateUserDTO): Response<Any>
+    suspend fun registerUser(@Body request: CreateUserDTO): Response<Map<String, String>>
 }
 
 interface ConversionRateApiService {

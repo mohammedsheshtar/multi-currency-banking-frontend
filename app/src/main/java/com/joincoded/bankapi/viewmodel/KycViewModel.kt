@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 class KycViewModel : ViewModel() {
     private val _kycData = MutableStateFlow<KYCResponse?>(null)
@@ -19,46 +18,68 @@ class KycViewModel : ViewModel() {
     private val _errorMessage = MutableStateFlow("")
     val errorMessage: StateFlow<String> get() = _errorMessage
 
-    private val kycApiService = RetrofitHelper.getInstance().create(KycApiService::class.java)
+    private val api = RetrofitHelper.getInstance().create(KycApiService::class.java)
 
     fun fetchKYC(token: String) {
         viewModelScope.launch {
             try {
-                val response = kycApiService.getMyKYC("Bearer $token")
+                val response = api.getMyKYC("Bearer $token")
                 if (response.isSuccessful) {
                     _kycData.value = response.body()
                 } else {
-                    _errorMessage.value = "Failed to load KYC"
+                    _errorMessage.value = "Error fetching KYC: ${response.message()}"
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Error: ${e.localizedMessage}"
+                _errorMessage.value = "Error fetching KYC: ${e.localizedMessage}"
             }
         }
     }
 
-    fun updateKYC(token: String, firstName: String, lastName: String, country: String, phone: String, address: String, salary: Double) {
+    fun updateKYC(
+        token: String,
+        firstName: String,
+        lastName: String,
+        country: String,
+        phoneNumber: String,
+        homeAddress: String,
+        salary: Double
+    ) {
         viewModelScope.launch {
-            try {
-                val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+            val originalKycData = _kycData.value
+            println("DEBUG: Original KYC Data = $originalKycData")
+            println("DEBUG: Original Date of Birth = ${originalKycData?.dateOfBirth}")
+
+            if (originalKycData != null) {
+                // ✅ Convert dateOfBirth from String to LocalDate
+                val dateOfBirth = try {
+                    LocalDate.parse(originalKycData.dateOfBirth)
+                } catch (e: Exception) {
+                    LocalDate.of(2000, 1, 1)  // Fallback date
+                }
+
                 val kycRequest = KYCRequest(
                     firstName = firstName,
                     lastName = lastName,
+                    dateOfBirth = dateOfBirth.toString(),  // Valid LocalDate
+                    civilId = originalKycData.civilId,
                     country = country,
-                    phoneNumber = phone,
-                    homeAddress = address,
-                    salary = salary.toBigDecimal(),
-                    civilId = _kycData.value?.civilId ?: "",
-                    dateOfBirth = _kycData.value?.dateOfBirth?.let { LocalDate.parse(it, formatter) } ?: LocalDate.now()
+                    phoneNumber = phoneNumber,
+                    homeAddress = homeAddress,
+                    salary = salary.toBigDecimal()
                 )
-                val response = kycApiService.addOrUpdateMyKYC("Bearer $token", kycRequest)
-                if (response.isSuccessful) {
-                    fetchKYC(token)
-                    _errorMessage.value = "KYC updated successfully."
-                } else {
-                    _errorMessage.value = "Failed to update KYC"
+
+                try {
+                    val response = api.addOrUpdateMyKYC("Bearer $token", kycRequest)
+                    if (response.isSuccessful) {
+                        _kycData.value = response.body() as? KYCResponse ?: originalKycData
+                    } else {
+                        _errorMessage.value = "Error updating KYC: ${response.message()}"
+                    }
+                } catch (e: Exception) {
+                    _errorMessage.value = "Error updating KYC: ${e.localizedMessage}"
                 }
-            } catch (e: Exception) {
-                _errorMessage.value = "Error updating KYC: ${e.localizedMessage}"
+            } else {
+                _errorMessage.value = "No original KYC data available."
             }
         }
     }

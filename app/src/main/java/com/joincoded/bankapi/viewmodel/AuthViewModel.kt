@@ -5,17 +5,23 @@ import androidx.lifecycle.viewModelScope
 import com.joincoded.bankapi.data.User
 import com.joincoded.bankapi.data.request.AuthenticationRequest
 import com.joincoded.bankapi.data.request.CreateUserDTO
+import com.joincoded.bankapi.data.request.KYCRequest
 import com.joincoded.bankapi.network.RetrofitHelper
 import com.joincoded.bankapi.network.AuthenticationApiService
+import com.joincoded.bankapi.network.KycApiService
 import com.joincoded.bankapi.network.UserApiService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class AuthViewModel : ViewModel() {
-    private val authService = RetrofitHelper.getInstance().create(AuthenticationApiService::class.java)
-    private val bankService = RetrofitHelper.getInstance().create(com.joincoded.bankapi.network.BankApiService::class.java)
+    private val authService =
+        RetrofitHelper.getInstance().create(AuthenticationApiService::class.java)
+    private val bankService = RetrofitHelper.getInstance()
+        .create(com.joincoded.bankapi.network.BankApiService::class.java)
     private val userApiService = RetrofitHelper.getInstance().create(UserApiService::class.java)
+    private val kycApi = RetrofitHelper.getInstance().create(KycApiService::class.java)
+
     private val _authMessage = MutableStateFlow<String>("")
     val authMessage: StateFlow<String> get() = _authMessage
 
@@ -44,21 +50,30 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    fun register(username: String, password: String) {
+    fun registerWithKyc(userData: CreateUserDTO, kyc: KYCRequest) {
         viewModelScope.launch {
-            println("Register called with $username")
             try {
-                val response = userApiService.registerUser(CreateUserDTO(username, password))
-                println("Response code: ${response.code()}, body: ${response.body()}")
-                if (response.isSuccessful) {
-                    _authMessage.value = "Registration successful!"
+                val registerResponse = userApiService.registerUser(userData)
+                val token = registerResponse.body()?.get("token")
+
+                if (!registerResponse.isSuccessful || token.isNullOrEmpty()) {
+                    _authMessage.value = "Registration failed: ${registerResponse.message()}"
+                    return@launch
+                }
+
+                _token.value = token
+
+                val kycResponse = kycApi.addOrUpdateMyKYC("Bearer $token", kyc)
+
+                if (kycResponse.isSuccessful) {
+                    _authMessage.value = "Registration and KYC completed successfully!"
                 } else {
-                    _authMessage.value = "Registration failed: ${response.errorBody()?.string()}"
+                    _authMessage.value = "KYC failed: ${kycResponse.message()}"
                 }
             } catch (e: Exception) {
-                _authMessage.value = "Registration error: ${e.localizedMessage}"
-                println("Error: ${e.localizedMessage}")
+                _authMessage.value = "Error: ${e.localizedMessage}"
             }
         }
     }
+
 }
