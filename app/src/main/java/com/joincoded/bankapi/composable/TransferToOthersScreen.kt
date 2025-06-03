@@ -118,7 +118,7 @@ fun TransferToOthersScreen(
     var modalAlpha by remember { mutableStateOf(0f) }
     var showBiometricPrompt by remember { mutableStateOf(false) }
     var isBiometricAvailable by remember { mutableStateOf(false) }
-    
+
     LaunchedEffect(showModal) {
         if (showModal) {
             modalScale = 1f
@@ -503,16 +503,16 @@ fun TransferToOthersScreen(
                                                     onSuccess = {
                                                         Log.d("Biometric", "Authentication successful")
                                                         showBiometricPrompt = false
-                                                        isLoading = true
-                                                        coroutineScope.launch {
-                                                            try {
-                                                                val token = TokenManager.getToken(context)
-                                                                if (token == null) {
+                                    isLoading = true
+                                    coroutineScope.launch {
+                                        try {
+                                            val token = TokenManager.getToken(context)
+                                            if (token == null) {
                                                                     Log.e("TransferToOthers", "❌ No token found in storage")
-                                                                    showError = "Authentication required"
-                                                                    isLoading = false
-                                                                    return@launch
-                                                                }
+                                                showError = "Authentication required"
+                                                isLoading = false
+                                                return@launch
+                                            }
                                                                 Log.d("TransferToOthers", "✅ Token retrieved: ${token.take(20)}...")
 
                                                                 val transferLinkRequest = TransferLinkRequest(
@@ -526,8 +526,8 @@ fun TransferToOthersScreen(
                                                                     - Amount: ${transferLinkRequest.amount}
                                                                     - Currency Code: ${transferLinkRequest.currencyCode} (converted from ${fromCard.currency})
                                                                 """.trimIndent())
-                                                                
-                                                                val response = RetrofitHelper.TransactionApi.generateTransferLink(
+                                            
+                                            val response = RetrofitHelper.TransactionApi.generateTransferLink(
                                                                     token = token,
                                                                     request = transferLinkRequest
                                                                 )
@@ -550,8 +550,8 @@ fun TransferToOthersScreen(
                                                                     - Expires At: ${response.body()?.expiresAt}
                                                                     - Is Used: ${response.body()?.isUsed}
                                                                 """.trimIndent())
-                                                                
-                                                                if (response.isSuccessful) {
+                                            
+                                            if (response.isSuccessful) {
                                                                     val responseBody = response.body()
                                                                     if (responseBody != null) {
                                                                         transferLink = responseBody
@@ -568,33 +568,33 @@ fun TransferToOthersScreen(
                                                                             - Expires At: ${transferLink?.expiresAt}
                                                                             - Is Used: ${transferLink?.isUsed}
                                                                         """.trimIndent())
-                                                                        isLinkGenerated = true
-                                                                        showSuccess = true
-                                                                        amount = ""
+                                                isLinkGenerated = true
+                                                showSuccess = true
+                                                amount = ""
                                                                     } else {
                                                                         Log.e("TransferToOthers", "❌ Response body is null despite successful response")
                                                                         showError = "Failed to generate transfer link: Response body is null"
                                                                         showModal = false
                                                                     }
-                                                                } else {
-                                                                    val errorBody = response.errorBody()?.string()
+                                            } else {
+                                                val errorBody = response.errorBody()?.string()
                                                                     Log.e("TransferToOthers", """
                                                                         ❌ Failed to generate transfer link:
                                                                         - Status Code: ${response.code()}
                                                                         - Error Body: $errorBody
                                                                     """.trimIndent())
-                                                                    showError = "Failed to generate transfer link: ${response.code()} - $errorBody"
-                                                                    showModal = false
-                                                                }
-                                                            } catch (e: Exception) {
+                                                showError = "Failed to generate transfer link: ${response.code()} - $errorBody"
+                                                showModal = false
+                                            }
+                                        } catch (e: Exception) {
                                                                 Log.e("Biometric", "Error generating link: ${e.message}")
-                                                                showError = "Failed to generate transfer link: ${e.message}"
-                                                                showModal = false
-                                                            } finally {
-                                                                isLoading = false
-                                                            }
-                                                        }
-                                                    },
+                                            showError = "Failed to generate transfer link: ${e.message}"
+                                            showModal = false
+                                        } finally {
+                                            isLoading = false
+                                        }
+                                    }
+                                },
                                                     onError = { error ->
                                                         Log.e("Biometric", "Authentication error: $error")
                                                         showBiometricPrompt = false
@@ -696,8 +696,8 @@ fun TransferToOthersScreen(
                                                             }
                                                         }
                                                     }
-                                                )
-                                            } else {
+                                    )
+                                } else {
                                                 Log.e("Biometric", "Activity context not found. Context type: ${context.javaClass.simpleName}")
                                                 showError = "Unable to start biometric authentication"
                                                 showModal = false

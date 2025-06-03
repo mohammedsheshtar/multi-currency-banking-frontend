@@ -286,7 +286,7 @@ fun FanCarouselFocusedView(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(width = 48.dp, height = 6.dp)
+                        .size(width = 55.dp, height = 6.dp)
                         .background(Color.DarkGray, RoundedCornerShape(3.dp))
                         .align(Alignment.CenterHorizontally)
                         .clickable { expanded = !expanded }
@@ -349,7 +349,9 @@ fun FanCarouselFocusedView(
 
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 66.dp)
                 ) {
                     if (isLoadingTransactions.value) {
                         item {

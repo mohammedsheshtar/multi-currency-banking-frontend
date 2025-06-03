@@ -54,6 +54,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
 
 @Composable
 fun FanCarouselView(
@@ -190,8 +191,17 @@ fun FanCarouselView(
 
             heldIndex.value?.let { idx ->
                 cardStates.getOrNull(idx)?.card?.let { card ->
-                    Box(Modifier.align(Alignment.TopStart).padding(16.dp)) {
-                        Text("${card.balance} ${card.currency}", color = Color.White)
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(top = 48.dp, start = 16.dp)
+                    ) {
+                        Text(
+                            "${card.balance} ${card.currency}",
+                            color = Color(0xFFD1B4FF),
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
