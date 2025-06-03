@@ -17,9 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Send
@@ -42,25 +40,22 @@ import com.joincoded.bankapi.ui.theme.AccentLight
 import com.joincoded.bankapi.ui.theme.CardDark
 import com.joincoded.bankapi.ui.theme.DarkBackground
 import com.joincoded.bankapi.ui.theme.TextLight
-import com.joincoded.bankapi.viewmodel.BankViewModel
+import com.joincoded.bankapi.viewmodel.HomeViewModel
 import java.math.BigDecimal
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.joincoded.bankapi.data.response.KYCResponse
 import com.joincoded.bankapi.data.response.TransactionHistoryResponse
 import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun HomePage(navController: NavController, viewModel: BankViewModel = viewModel()) {
+fun HomePage(navController: NavController, viewModel: HomeViewModel = viewModel()) {
     val userAccounts = viewModel.accounts
     val transactions = viewModel.transactions
     val errorMessage = viewModel.errorMessage
 
     LaunchedEffect(Unit) {
         viewModel.getAccounts()
-        viewModel.getAllTransactionsForUser() // ✅ Call new endpoint to fetch all user transactions
+        viewModel.getAllTransactionsForUser()
     }
 
     Column(
@@ -222,7 +217,6 @@ fun TransactionCard(txn: TransactionHistoryResponse) {
             Column {
                 Text(txn.transactionType, color = TextLight, fontWeight = FontWeight.SemiBold)
 
-                // 🆕 Account number
                 Text(
                     text = "Account: ${txn.accountNumber}",
                     fontSize = 12.sp,

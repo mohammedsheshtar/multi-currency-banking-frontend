@@ -30,7 +30,7 @@ class ShopHistoryViewModel : ViewModel() {
             }
 
             try {
-                println("📡 Sending token: $authToken") // already has "Bearer "
+                println("📡 Sending token: $authToken")
                 val response = api.getShopTransaction(authToken)
                 if (response.isSuccessful) {
                     _transactions.value = response.body() ?: emptyList()

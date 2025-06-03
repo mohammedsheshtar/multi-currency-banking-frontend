@@ -6,17 +6,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -129,7 +124,6 @@ fun ShopPage(navController: NavController, token: String, shopViewModel: ShopVie
             }
         }
 
-        // Confirm Buy Dialog
         if (shopViewModel.showBuyConfirmDialog) {
             val item = shopViewModel.selectedItemToBuy
             if (item != null) {
@@ -154,7 +148,6 @@ fun ShopPage(navController: NavController, token: String, shopViewModel: ShopVie
             }
         }
 
-        // Success Dialog
         if (shopViewModel.showSuccessDialog) {
             androidx.compose.material3.AlertDialog(
                 onDismissRequest = { shopViewModel.showSuccessDialog = false },
@@ -170,7 +163,6 @@ fun ShopPage(navController: NavController, token: String, shopViewModel: ShopVie
             )
         }
 
-        // KYC Required Dialog
         if (shopViewModel.showKycDialog) {
             androidx.compose.material3.AlertDialog(
                 onDismissRequest = { shopViewModel.showKycDialog = false },
@@ -179,7 +171,7 @@ fun ShopPage(navController: NavController, token: String, shopViewModel: ShopVie
                 confirmButton = {
                     Button(onClick = {
                         shopViewModel.showKycDialog = false
-                        navController.navigate("kycRegistration") // TODO: Add this route in your NavHost
+                        navController.navigate("kycRegistration")
                     }) {
                         Text("OK")
                     }
@@ -195,7 +187,6 @@ fun ShopItemCard(item: ShopItem, viewModel: ShopViewModel) {
     val textColor = if (item.isUnlocked) TextLight else TextLight.copy(alpha = 0.5f)
     val purpleAccent = Color(0xFFB297E7)
 
-    // ✅ Check if user can buy: unlocked, has enough points, and item is in stock
     val isBuyEnabled = item.isUnlocked && item.itemQuantity > 0 && item.userPoints >= item.requiredPoints
 
     Card(
@@ -213,7 +204,6 @@ fun ShopItemCard(item: ShopItem, viewModel: ShopViewModel) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Left icon
             Icon(
                 imageVector = Icons.Filled.Star,
                 contentDescription = "Tier Icon",
@@ -221,7 +211,6 @@ fun ShopItemCard(item: ShopItem, viewModel: ShopViewModel) {
                 modifier = Modifier.size(36.dp)
             )
 
-            // Center content
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -244,7 +233,6 @@ fun ShopItemCard(item: ShopItem, viewModel: ShopViewModel) {
                 )
             }
 
-            // Right button
             Button(
                 onClick = { viewModel.triggerBuy(item) },
                 enabled = isBuyEnabled,
