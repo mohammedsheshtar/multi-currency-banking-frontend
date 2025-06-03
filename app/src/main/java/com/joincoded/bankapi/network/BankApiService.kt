@@ -2,6 +2,7 @@ package com.joincoded.bankapi.network
 
 import com.joincoded.bankapi.data.AmountChange
 import com.joincoded.bankapi.data.User
+import com.joincoded.bankapi.data.request.AuthenticationRequest
 import com.joincoded.bankapi.data.request.CreateAccount
 import com.joincoded.bankapi.data.request.CreateUserDTO
 import com.joincoded.bankapi.data.request.DepositRequest
@@ -60,7 +61,7 @@ interface AccountApiService {
 
 interface AuthenticationApiService {
     @POST("authentication/api/v1/authentication/login")
-    suspend fun login(@Body authRequest: User): Response<AuthenticationResponse>
+    suspend fun login(@Body authRequest: AuthenticationRequest): Response<AuthenticationResponse>
 }
 
 interface KycApiService {

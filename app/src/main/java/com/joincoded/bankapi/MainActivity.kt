@@ -100,4 +100,7 @@ fun AppNavigator(
 
         composable("${NavRoutes.NAV_ROUTE_PROFILE_SCREEN.value}/{token}") { backStackEntry ->
             val token = backStackEntry.arguments?.getString("token") ?: ""
+        }
+    }
+}
 

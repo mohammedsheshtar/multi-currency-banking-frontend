@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.joincoded.bankapi.data.User
+import com.joincoded.bankapi.data.request.AuthenticationRequest
 import com.joincoded.bankapi.data.response.ListAccountResponse
 import com.joincoded.bankapi.data.response.TransactionHistoryResponse
 import com.joincoded.bankapi.network.RetrofitHelper
@@ -34,7 +35,7 @@ class HomeViewModel : ViewModel() {
             try {
                 println("🔁 Attempting login...")
                 val response = RetrofitHelper.AuthenticationApi.login(
-                    User("MuhammedX", "Mm123456", "", null)
+                    AuthenticationRequest("JAWADa123", "12345asdFG")
                 )
                 if (response.isSuccessful) {
                     token = "Bearer ${response.body()?.token}"
