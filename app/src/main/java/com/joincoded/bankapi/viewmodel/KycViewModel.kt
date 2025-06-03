@@ -71,7 +71,7 @@ class KycViewModel : ViewModel() {
                 try {
                     val response = api.addOrUpdateMyKYC("Bearer $token", kycRequest)
                     if (response.isSuccessful) {
-                        _kycData.value = response.body() as? KYCResponse ?: originalKycData
+                        _kycData.value = response.body() ?: originalKycData
                     } else {
                         _errorMessage.value = "Error updating KYC: ${response.message()}"
                     }

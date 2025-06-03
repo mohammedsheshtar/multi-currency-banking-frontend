@@ -107,7 +107,9 @@ fun ProfileScreen(token: String, onLogout: () -> Unit) {
                         Button(onClick = {
                             val salaryValue = editedSalary.toDoubleOrNull() ?: 0.0
                             kycViewModel.updateKYC(token, editedFirstName, editedLastName, editedCountry, editedPhone, editedAddress, salaryValue)
+                            kycViewModel.fetchKYC(token)
                             isEditing = false
+
                         }, colors = ButtonDefaults.buttonColors(containerColor = primaryDark)) {
                             Text("Save", color = onPrimaryDark)
                         }

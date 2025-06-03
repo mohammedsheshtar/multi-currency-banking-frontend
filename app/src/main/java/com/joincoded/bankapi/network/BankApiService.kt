@@ -64,7 +64,7 @@ interface KycApiService {
 
     @POST("api/v1/users/kyc")
     suspend fun addOrUpdateMyKYC(@Header("Authorization") token: String,
-        @Body request: KYCRequest): Response<*>
+        @Body request: KYCRequest): Response<KYCResponse>
 }
 
 interface MembershipApiService {

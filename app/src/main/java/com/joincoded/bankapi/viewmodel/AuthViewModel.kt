@@ -53,23 +53,34 @@ class AuthViewModel : ViewModel() {
     fun registerWithKyc(userData: CreateUserDTO, kyc: KYCRequest) {
         viewModelScope.launch {
             try {
+                // First register
                 val registerResponse = userApiService.registerUser(userData)
-                val token = registerResponse.body()?.get("token")
-
-                if (!registerResponse.isSuccessful || token.isNullOrEmpty()) {
+                if (!registerResponse.isSuccessful) {
                     _authMessage.value = "Registration failed: ${registerResponse.message()}"
+                    return@launch
+                }
+
+                // Then login to get token
+                val loginResponse = authService.login(
+                    AuthenticationRequest(userData.username, userData.password)
+                )
+                val token = loginResponse.body()?.token
+
+                if (!loginResponse.isSuccessful || token.isNullOrEmpty()) {
+                    _authMessage.value = "Login failed after registration."
                     return@launch
                 }
 
                 _token.value = token
 
+                // Then submit KYC with token
                 val kycResponse = kycApi.addOrUpdateMyKYC("Bearer $token", kyc)
-
                 if (kycResponse.isSuccessful) {
                     _authMessage.value = "Registration and KYC completed successfully!"
                 } else {
                     _authMessage.value = "KYC failed: ${kycResponse.message()}"
                 }
+
             } catch (e: Exception) {
                 _authMessage.value = "Error: ${e.localizedMessage}"
             }
