@@ -2,8 +2,6 @@ package com.joincoded.bankapi.network
 
 import com.joincoded.bankapi.data.AmountChange
 import com.joincoded.bankapi.data.User
-import com.joincoded.bankapi.data.request.AuthenticationRequest
-import com.joincoded.bankapi.data.request.ConversionRateRequest
 import com.joincoded.bankapi.data.request.CreateAccount
 import com.joincoded.bankapi.data.request.CreateUserDTO
 import com.joincoded.bankapi.data.request.DepositRequest
@@ -14,9 +12,12 @@ import com.joincoded.bankapi.data.response.AuthenticationResponse
 import com.joincoded.bankapi.data.response.ConversionRateResponse
 import com.joincoded.bankapi.data.response.CreateAccountResponse
 import com.joincoded.bankapi.data.response.CurrencyResponse
+import com.joincoded.bankapi.data.response.KYCResponse
 import com.joincoded.bankapi.data.response.ListAccountResponse
 import com.joincoded.bankapi.data.response.ListMembershipResponse
+import com.joincoded.bankapi.data.response.ShopTransactionResponse
 import com.joincoded.bankapi.data.response.TokenResponse
+import com.joincoded.bankapi.data.response.TransactionHistoryResponse
 import com.joincoded.bankapi.utils.Constants
 import retrofit2.Response
 import retrofit2.http.Body
@@ -38,29 +39,34 @@ interface BankApiService {
                         @Body amountChange: AmountChange
     ): Response<Unit>
 }
-
 interface AccountApiService {
     @GET("api/v1/users/accounts")
-    suspend fun listUserAccounts(@Header(Constants.authorization) token: String?): Response<*>
+    suspend fun listUserAccounts(
+        @Header(Constants.authorization) token: String?
+    ): Response<List<ListAccountResponse>>
 
     @POST("api/v1/users/accounts")
-    suspend fun createAccount(@Header(Constants.authorization) token: String?,
-                              @Body request: CreateAccount): Response<*>
+    suspend fun createAccount(
+        @Header(Constants.authorization) token: String?,
+        @Body request: CreateAccount
+    ): Response<*>
 
     @POST("/api/v1/users/accounts/{accountNumber}")
-    suspend fun closeAccount(@Header(Constants.authorization) token: String?,
-                             @Path("accountNumber") accountNumber: String): Response<*>
+    suspend fun closeAccount(
+        @Header(Constants.authorization) token: String?,
+        @Path("accountNumber") accountNumber: String
+    ): Response<*>
 }
 
 interface AuthenticationApiService {
     @POST("authentication/api/v1/authentication/login")
-    suspend fun login(@Body authRequest: AuthenticationRequest): Response<AuthenticationResponse>
+    suspend fun login(@Body authRequest: User): Response<AuthenticationResponse>
 }
 
 interface KycApiService {
     @GET("api/v1/users/kyc")
-    suspend fun getMyKYC(@Header(Constants.authorization) token: String?,
-                         request: KYCRequest): Response<*>?
+    suspend fun getMyKYC(@Header(Constants.authorization) token: String?): Response<KYCResponse>
+
 
     @POST("api/v1/users/kyc")
     suspend fun addOrUpdateMyKYC(@Header(Constants.authorization) token: String?,
@@ -85,7 +91,7 @@ interface ShopApiService {
                         @Path("itemId") itemId: Int): Response<*>
 
     @GET("/api/v1/shop/history")
-    suspend fun getShopTransaction(@Header(Constants.authorization) token: String?): Response<*>
+    suspend fun getShopTransaction(@Header(Constants.authorization) token: String?): Response<List<ShopTransactionResponse>>
 }
 
 interface TransactionApiService {
@@ -97,14 +103,25 @@ interface TransactionApiService {
     suspend fun withdrawAccount(@Header(Constants.authorization) token: String?,
                                 @Body request: WithdrawRequest): Response<*>
 
+
+
     @POST("/api/v1/accounts/transfer")
     suspend fun transferAccounts(@Header(Constants.authorization) token: String?,
                                  @Body request: TransferRequest): Response<*>
 
-    @GET("api/v1/accounts/transactions/{accountId}")
-    suspend fun getTransactionHistory(@Header(Constants.authorization) token: String?,
-                                      @Path("accountId") accountId: Int): Response<*>
+    @GET("api/v1/accounts/transactions/{accountNumber}")
+    suspend fun getTransactionHistory(
+        @Header(Constants.authorization) token: String?,
+        @Path("accountNumber") accountId: Long
+    ): Response<List<TransactionHistoryResponse>>
+
+    @GET("/api/v1/user/accounts/transactions")
+    suspend fun getAllTransactionHistory(
+        @Header(Constants.authorization) token: String?
+    ): Response<List<TransactionHistoryResponse>>
+
 }
+
 
 interface UserApiService {
     @POST("api/v1/authentication/register")

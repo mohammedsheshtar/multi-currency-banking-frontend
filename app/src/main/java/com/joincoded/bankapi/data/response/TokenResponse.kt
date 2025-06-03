@@ -12,6 +12,7 @@ data class TokenResponse(val token: String?) {
 }
 
 data class ListAccountResponse(
+    val id: Long,
     val balance: BigDecimal,
     val accountNumber: String,
     val accountType: String,
@@ -36,7 +37,7 @@ data class AuthenticationResponse(
 data class KYCResponse(
     val firstName: String,
     val lastName: String,
-    val dateOfBirth: LocalDate,
+    val dateOfBirth: String,
     val civilId: String,
     val country: String,
     val phoneNumber: String,
@@ -57,6 +58,7 @@ data class PurchaseResponse(
 )
 
 data class ListItemsResponse(
+    val id: Long,
     val itemName: String,
     val tierName: String,
     val pointCost: Int,
@@ -69,7 +71,7 @@ data class ShopTransactionResponse(
     val itemTier: String,
     val accountTier: String,
     val pointsSpent: Int,
-    val timeOfTransaction: LocalDateTime
+    val timeOfTransaction: String
 )
 
 data class DepositResponse(
@@ -100,7 +102,7 @@ data class TransactionHistoryResponse(
     val requestedCurrency: String,
     val amount: BigDecimal,
     val status: String,
-    val timeStamp: LocalDateTime,
+    val timeStamp: String,
     val transactionType: String,
     val conversionRate: BigDecimal?
 )
