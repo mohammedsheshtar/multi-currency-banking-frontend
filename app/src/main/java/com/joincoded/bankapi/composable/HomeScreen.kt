@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -59,12 +60,7 @@ fun HomePage(navController: NavController, viewModel: BankViewModel = viewModel(
 
     LaunchedEffect(Unit) {
         viewModel.getAccounts()
-    }
-
-    LaunchedEffect(userAccounts) {
-        if (userAccounts.isNotEmpty()) {
-            viewModel.getAllTransactionsForUserAccounts()
-        }
+        viewModel.getAllTransactionsForUser() // ✅ Call new endpoint to fetch all user transactions
     }
 
     Column(
@@ -121,12 +117,13 @@ fun HomePage(navController: NavController, viewModel: BankViewModel = viewModel(
                     .fillMaxWidth()
                     .height(210.dp)
             ) {
-                androidx.compose.foundation.lazy.LazyColumn(
+                LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    items(transactions.take(10)) { txn ->
+                    items(transactions.sortedByDescending { it.timeStamp }.take(15)) { txn ->
                         TransactionCard(txn)
                     }
+
                 }
             }
         }
@@ -223,7 +220,15 @@ fun TransactionCard(txn: TransactionHistoryResponse) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                Text(txn.transactionType, color = TextLight)
+                Text(txn.transactionType, color = TextLight, fontWeight = FontWeight.SemiBold)
+
+                // 🆕 Account number
+                Text(
+                    text = "Account: ${txn.accountNumber}",
+                    fontSize = 12.sp,
+                    color = Accent
+                )
+
                 Text(
                     formatDateTime(txn.timeStamp.toString()),
                     fontSize = 12.sp,
@@ -238,13 +243,14 @@ fun TransactionCard(txn: TransactionHistoryResponse) {
             }
 
             Text(
-                text = String.format("%,.2f %s", txn.amount, txn.accountCurrency),
+                text = String.format("%,.2f %s", txn.amount, txn.requestedCurrency),
                 color = amountColor,
                 fontWeight = FontWeight.Bold
             )
         }
     }
 }
+
 
 fun formatDateTime(isoString: String): String {
     return try {

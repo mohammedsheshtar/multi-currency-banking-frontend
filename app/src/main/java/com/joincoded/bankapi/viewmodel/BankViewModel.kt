@@ -36,7 +36,7 @@ class BankViewModel : ViewModel() {
             try {
                 println("🔁 Attempting login...")
                 val response = RetrofitHelper.AuthenticationApi.login(
-                    User("Zainab3812", "1n23415MM67", "", null)
+                    User("MuhammedX", "Mm123456", "", null)
                 )
                 if (response.isSuccessful) {
                     token = "Bearer ${response.body()?.token}"
@@ -84,28 +84,25 @@ class BankViewModel : ViewModel() {
         }
     }
 
-    fun getAllTransactionsForUserAccounts() {
+    fun getAllTransactionsForUser() {
         viewModelScope.launch {
             try {
-                val allTransactions = mutableListOf<TransactionHistoryResponse>()
-                accounts.forEach { account ->
-                    val response = RetrofitHelper.TransactionApi.getTransactionHistory(token, account.id)
-                    if (response.isSuccessful) {
-                        response.body()?.let {
-                            allTransactions.addAll(it)
-                        }
-                    } else {
-                        println("❌ Failed to fetch transactions for ${account.accountNumber}: ${response.message()}")
+                val response = RetrofitHelper.TransactionApi.getAllTransactionHistory(token)
+                if (response.isSuccessful) {
+                    transactions.clear()
+                    response.body()?.let {
+                        transactions.addAll(it.sortedByDescending { txn -> txn.timeStamp })
                     }
+                    println("📄 All Transactions from new endpoint: $transactions")
+                } else {
+                    println("❌ Failed to fetch all transactions: ${response.message()}")
                 }
-                transactions.clear()
-                transactions.addAll(allTransactions.sortedByDescending { it.timeStamp })
-                println("📄 All Transactions: $transactions")
             } catch (e: Exception) {
-                println("❗ getAllTransactions error: ${e.message}")
+                println("❗ getAllTransactionsForUser error: ${e.message}")
             }
         }
     }
+
 
     fun getTransactions(accountId: Long) {
         viewModelScope.launch {

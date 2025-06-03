@@ -111,6 +111,10 @@ interface TransactionApiService {
         @Path("accountNumber") accountId: Long
     ): Response<List<TransactionHistoryResponse>>
 
+    @GET("/api/v1/user/accounts/transactions")
+    suspend fun getAllTransactionHistory(
+        @Header(Constants.authorization) token: String?
+    ): Response<List<TransactionHistoryResponse>>
 
 }
 
