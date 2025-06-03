@@ -2,8 +2,10 @@ package com.joincoded.bankapi.composable
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,7 +26,6 @@ import com.joincoded.bankapi.data.request.CreateUserDTO
 import com.joincoded.bankapi.data.request.KYCRequest
 import com.joincoded.bankapi.viewmodel.AuthViewModel
 import java.math.BigDecimal
-import java.time.LocalDate
 
 @Composable
 fun RegistrationScreen(navController: NavController) {
@@ -42,6 +43,8 @@ fun RegistrationScreen(navController: NavController) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+
+    var proceedToKyc by remember { mutableStateOf(false) }
 
     val backgroundDark = Color(0xFF141219)
     val primaryDark = Color(0xFFCDBDFF)
@@ -82,25 +85,122 @@ fun RegistrationScreen(navController: NavController) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = 24.dp)
+            .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            TextField(value = firstName, onValueChange = { firstName = it }, label = { Text("First Name", color = Color.White) }, colors = fieldColors, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).padding(vertical = 4.dp))
-            TextField(value = lastName, onValueChange = { lastName = it }, label = { Text("Last Name", color = Color.White) }, colors = fieldColors, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).padding(vertical = 4.dp))
-            TextField(value = dateOfBirth, onValueChange = { dateOfBirth = it }, label = { Text("Date of Birth (YYYY-MM-DD)", color = Color.White) }, colors = fieldColors, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).padding(vertical = 4.dp))
-            TextField(value = civilId, onValueChange = { civilId = it }, label = { Text("Civil ID", color = Color.White) }, colors = fieldColors, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).padding(vertical = 4.dp))
-            TextField(value = country, onValueChange = { country = it }, label = { Text("Country", color = Color.White) }, colors = fieldColors, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).padding(vertical = 4.dp))
-            TextField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = { Text("Phone Number", color = Color.White) }, colors = fieldColors, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).padding(vertical = 4.dp))
-            TextField(value = homeAddress, onValueChange = { homeAddress = it }, label = { Text("Home Address", color = Color.White) }, colors = fieldColors, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).padding(vertical = 4.dp))
-            TextField(value = salary, onValueChange = { salary = it }, label = { Text("Salary (in KD)", color = Color.White) }, colors = fieldColors, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).padding(vertical = 4.dp))
-            TextField(value = username, onValueChange = { username = it }, label = { Text("Username", color = Color.White) }, colors = fieldColors, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).padding(vertical = 4.dp))
-            TextField(value = password, onValueChange = { password = it }, label = { Text("Password", color = Color.White) }, visualTransformation = PasswordVisualTransformation(), colors = fieldColors, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).padding(vertical = 4.dp))
-            TextField(value = confirmPassword, onValueChange = { confirmPassword = it }, label = { Text("Confirm Password", color = Color.White) }, visualTransformation = PasswordVisualTransformation(), colors = fieldColors, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).padding(vertical = 4.dp))
+            if (!proceedToKyc) {
+                TextField(
+                    value = firstName,
+                    onValueChange = { firstName = it },
+                    label = { Text("First Name", color = Color.White) },
+                    colors = fieldColors,
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp))
+                        .padding(vertical = 4.dp)
+                )
+                TextField(
+                    value = lastName,
+                    onValueChange = { lastName = it },
+                    label = { Text("Last Name", color = Color.White) },
+                    colors = fieldColors,
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp))
+                        .padding(vertical = 4.dp)
+                )
+                TextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    label = { Text("Username", color = Color.White) },
+                    colors = fieldColors,
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp))
+                        .padding(vertical = 4.dp)
+                )
+                TextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Password", color = Color.White) },
+                    visualTransformation = PasswordVisualTransformation(),
+                    colors = fieldColors,
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp))
+                        .padding(vertical = 4.dp)
+                )
+                TextField(
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it },
+                    label = { Text("Confirm Password", color = Color.White) },
+                    visualTransformation = PasswordVisualTransformation(),
+                    colors = fieldColors,
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp))
+                        .padding(vertical = 4.dp)
+                )
 
-            Button(
-                onClick = {
-                    if (password == confirmPassword) {
+                Button(
+                    onClick = {
+                        if (password == confirmPassword) {
+                            proceedToKyc = true
+                        } else {
+                            authViewModel.setAuthMessage("Passwords do not match.")
+                        }
+
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+                ) {
+                    Text("Continue", color = primaryDark)
+                }
+
+            } else {
+                TextField(
+                    value = dateOfBirth,
+                    onValueChange = { dateOfBirth = it },
+                    label = { Text("Date of Birth (YYYY-MM-DD)", color = Color.White) },
+                    colors = fieldColors,
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp))
+                        .padding(vertical = 4.dp)
+                )
+                TextField(
+                    value = civilId,
+                    onValueChange = { civilId = it },
+                    label = { Text("Civil ID", color = Color.White) },
+                    colors = fieldColors,
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp))
+                        .padding(vertical = 4.dp)
+                )
+                TextField(
+                    value = country,
+                    onValueChange = { country = it },
+                    label = { Text("Country", color = Color.White) },
+                    colors = fieldColors,
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp))
+                        .padding(vertical = 4.dp)
+                )
+                TextField(
+                    value = phoneNumber,
+                    onValueChange = { phoneNumber = it },
+                    label = { Text("Phone Number", color = Color.White) },
+                    colors = fieldColors,
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp))
+                        .padding(vertical = 4.dp)
+                )
+                TextField(
+                    value = homeAddress,
+                    onValueChange = { homeAddress = it },
+                    label = { Text("Home Address", color = Color.White) },
+                    colors = fieldColors,
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp))
+                        .padding(vertical = 4.dp)
+                )
+                TextField(
+                    value = salary,
+                    onValueChange = { salary = it },
+                    label = { Text("Salary (in KD)", color = Color.White) },
+                    colors = fieldColors,
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp))
+                        .padding(vertical = 4.dp)
+                )
+
+                Button(
+                    onClick = {
                         authViewModel.registerWithKyc(
                             userData = CreateUserDTO(
                                 username = username,
@@ -117,20 +217,21 @@ fun RegistrationScreen(navController: NavController) {
                                 salary = salary.toBigDecimalOrNull() ?: BigDecimal.ZERO
                             )
                         )
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White)
-            ) {
-                Text("Register", color = primaryDark)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+                ) {
+                    Text("Register", color = primaryDark)
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = authMessage, color = onSurfaceDark, modifier = Modifier.padding(top = 8.dp))
 
-            if (authMessage == "Registration successful!") {
+            if (authMessage == "Registration and KYC completed successfully!") {
                 LaunchedEffect(Unit) {
-                    navController.navigate(NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value)
+                    navController.navigate(NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value + "?registered=true")
+
                 }
             }
         }

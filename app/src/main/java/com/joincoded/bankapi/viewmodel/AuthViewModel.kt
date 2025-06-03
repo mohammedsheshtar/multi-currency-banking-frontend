@@ -87,4 +87,9 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    fun setAuthMessage(message: String) {
+        _authMessage.value = message
+    }
+
+
 }

@@ -97,5 +97,17 @@ fun AppNavigator(
                 }
             )
         }
+        composable(NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value + "?registered={registered}") { backStackEntry ->
+            val registered = backStackEntry.arguments?.getString("registered") == "true"
+            LoginScreen(
+                navController = navController,
+                registered = registered,
+                onRegisterClick = { navController.navigate(NavRoutes.NAV_ROUTE_REGISTRATION_SCREEN.value) },
+                onForgotPasswordClick = { /* TODO: Add forgot password behavior */ },
+                onSocialClick = { /* TODO: Handle social login */ }
+            )
+
+        }
+
     }
 }

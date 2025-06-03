@@ -35,7 +35,8 @@ fun LoginScreen(
     navController: NavController,
     onRegisterClick: () -> Unit,
     onForgotPasswordClick: () -> Unit,
-    onSocialClick: (String) -> Unit
+    onSocialClick: (String) -> Unit,
+    registered: Boolean = false
 ) {
     val authViewModel: AuthViewModel = viewModel()
     val authMessage by authViewModel.authMessage.collectAsState()
@@ -113,6 +114,15 @@ fun LoginScreen(
                 .fillMaxSize()
                 .padding(top = 120.dp)
         ) {
+            if (registered) {
+                Text(
+                    text = "🎉 Registration Successful!",
+                    color = Color(0xFF8BC34A),
+                    fontSize = 18.sp,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+            }
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = fieldBackground),
@@ -149,6 +159,7 @@ fun LoginScreen(
                     }
                 }
             }
+
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = { authViewModel.login(username, password) },
@@ -166,9 +177,14 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
             TextButton(onClick = onRegisterClick) {
-                Text("Don't have an account? Sign Up", color = primaryDark, textDecoration = TextDecoration.Underline)
+                Text(
+                    "Don't have an account? Sign Up",
+                    color = primaryDark,
+                    textDecoration = TextDecoration.Underline
+                )
             }
         }
+
 
         Row(
             modifier = Modifier
