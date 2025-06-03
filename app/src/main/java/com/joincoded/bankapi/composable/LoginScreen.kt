@@ -184,12 +184,7 @@ fun LoginScreen(
                     .clickable { onSocialClick("google") },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.google),
-                    contentDescription = "Google Sign-In",
-                    tint = Color.Unspecified,
-                    modifier = Modifier.size(25.dp)
-                )
+                Icon(painter = painterResource(id = R.drawable.google), contentDescription = "Google Sign-In", tint = Color.Unspecified, modifier = Modifier.size(25.dp))
             }
             Box(
                 modifier = Modifier
@@ -199,12 +194,7 @@ fun LoginScreen(
                     .clickable { onSocialClick("email") },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Email,
-                    contentDescription = "Email Sign-In",
-                    tint = Color.White,
-                    modifier = Modifier.size(25.dp)
-                )
+                Icon(imageVector = Icons.Filled.Email, contentDescription = "Email Sign-In", tint = Color.White, modifier = Modifier.size(25.dp))
             }
             Box(
                 modifier = Modifier
@@ -214,12 +204,7 @@ fun LoginScreen(
                     .clickable { onSocialClick("phone") },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Phone,
-                    contentDescription = "Phone Sign-In",
-                    tint = Color.White,
-                    modifier = Modifier.size(25.dp)
-                )
+                Icon(imageVector = Icons.Filled.Phone, contentDescription = "Phone Sign-In", tint = Color.White, modifier = Modifier.size(25.dp))
             }
         }
     }

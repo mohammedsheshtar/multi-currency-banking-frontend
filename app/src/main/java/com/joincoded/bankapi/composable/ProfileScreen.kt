@@ -1,5 +1,3 @@
-package com.joincoded.bankapi.composable
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,9 +17,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.joincoded.bankapi.viewmodel.KycViewModel
 import com.joincoded.bankapi.R
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 @Composable
-fun ProfileScreen(token: String) {
+fun ProfileScreen(token: String, onLogout: () -> Unit) {
     val kycViewModel: KycViewModel = viewModel()
     val kycData by kycViewModel.kycData.collectAsState()
     val errorMessage by kycViewModel.errorMessage.collectAsState()
@@ -44,11 +44,15 @@ fun ProfileScreen(token: String) {
     var editedAddress by remember { mutableStateOf("") }
     var editedSalary by remember { mutableStateOf("") }
     var editedPhone by remember { mutableStateOf("") }
+    var editedFirstName by remember { mutableStateOf("") }
+    var editedLastName by remember { mutableStateOf("") }
 
     Box(modifier = Modifier.fillMaxSize().background(backgroundDark)) {
         when {
             kycData != null -> {
                 if (!isEditing) {
+                    editedFirstName = kycData!!.firstName
+                    editedLastName = kycData!!.lastName
                     editedCountry = kycData!!.country
                     editedAddress = kycData!!.homeAddress
                     editedSalary = kycData!!.salary.toString()
@@ -94,11 +98,17 @@ fun ProfileScreen(token: String) {
                         InfoCard("Civil ID", kycData!!.civilId, surfaceDark, primaryDark, onSurfaceDark, Modifier.weight(1f))
                     }
                     if (isEditing) {
+                        EditableField("First Name", editedFirstName, onSurfaceDark) { editedFirstName = it }
+                        EditableField("Last Name", editedLastName, onSurfaceDark) { editedLastName = it }
                         EditableField("Country", editedCountry, onSurfaceDark) { editedCountry = it }
                         EditableField("Phone Number", editedPhone, onSurfaceDark) { editedPhone = it }
                         EditableField("Home Address", editedAddress, onSurfaceDark) { editedAddress = it }
                         EditableField("Salary", editedSalary, onSurfaceDark) { editedSalary = it }
-                        Button(onClick = { isEditing = false }, colors = ButtonDefaults.buttonColors(containerColor = primaryDark)) {
+                        Button(onClick = {
+                            val salaryValue = editedSalary.toDoubleOrNull() ?: 0.0
+                            kycViewModel.updateKYC(token, editedFirstName, editedLastName, editedCountry, editedPhone, editedAddress, salaryValue)
+                            isEditing = false
+                        }, colors = ButtonDefaults.buttonColors(containerColor = primaryDark)) {
                             Text("Save", color = onPrimaryDark)
                         }
                     } else {
@@ -118,7 +128,10 @@ fun ProfileScreen(token: String) {
                     LinearProgressIndicator(progress = progress, color = primaryDark, modifier = Modifier.fillMaxWidth().height(10.dp))
                     Text("$currentPoints points - Next tier: $nextTierName at $nextTierPoints points", color = onSurfaceDark, fontSize = 14.sp, modifier = Modifier.align(Alignment.Start).padding(top = 4.dp))
                     Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedButton(onClick = { }, colors = ButtonDefaults.outlinedButtonColors(contentColor = primaryDark), modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(onClick = {
+                        kycViewModel.logout()
+                        onLogout()
+                    }, colors = ButtonDefaults.outlinedButtonColors(contentColor = primaryDark), modifier = Modifier.fillMaxWidth()) {
                         Text("Logout", fontSize = 18.sp)
                     }
                 }
@@ -132,6 +145,7 @@ fun ProfileScreen(token: String) {
         }
     }
 }
+
 
 @Composable
 fun InfoCard(title: String, value: String, surfaceColor: Color, primaryColor: Color, onSurfaceColor: Color, modifier: Modifier = Modifier) {

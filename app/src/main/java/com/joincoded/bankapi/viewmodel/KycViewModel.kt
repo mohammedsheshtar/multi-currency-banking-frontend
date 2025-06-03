@@ -9,6 +9,9 @@ import com.joincoded.bankapi.network.KycApiService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+
 class KycViewModel : ViewModel() {
     private val _kycData = MutableStateFlow<KYCResponse?>(null)
     val kycData: StateFlow<KYCResponse?> get() = _kycData
@@ -21,22 +24,48 @@ class KycViewModel : ViewModel() {
     fun fetchKYC(token: String) {
         viewModelScope.launch {
             try {
-                println("DEBUG: Fetching KYC with token: $token")
                 val response = kycApiService.getMyKYC("Bearer $token")
-                println("DEBUG: Response code=${response.code()}")
                 if (response.isSuccessful) {
-                    val kyc = response.body()
-                    println("DEBUG: KYC data=$kyc")
-                    _kycData.value = kyc
+                    _kycData.value = response.body()
                 } else {
-                    val errorMsg = response.errorBody()?.string() ?: response.message()
-                    println("DEBUG: Error body=$errorMsg")
-                    _errorMessage.value = "Failed to load KYC: $errorMsg"
+                    _errorMessage.value = "Failed to load KYC"
                 }
             } catch (e: Exception) {
                 _errorMessage.value = "Error: ${e.localizedMessage}"
-                println("DEBUG: Exception ${e.localizedMessage}")
             }
         }
+    }
+
+    fun updateKYC(token: String, firstName: String, lastName: String, country: String, phone: String, address: String, salary: Double) {
+        viewModelScope.launch {
+            try {
+                val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+                val kycRequest = KYCRequest(
+                    firstName = firstName,
+                    lastName = lastName,
+                    country = country,
+                    phoneNumber = phone,
+                    homeAddress = address,
+                    salary = salary.toBigDecimal(),
+                    civilId = _kycData.value?.civilId ?: "",
+                    dateOfBirth = _kycData.value?.dateOfBirth?.let { LocalDate.parse(it, formatter) } ?: LocalDate.now()
+                )
+                val response = kycApiService.addOrUpdateMyKYC("Bearer $token", kycRequest)
+                if (response.isSuccessful) {
+                    fetchKYC(token)
+                    _errorMessage.value = "KYC updated successfully."
+                } else {
+                    _errorMessage.value = "Failed to update KYC"
+                }
+            } catch (e: Exception) {
+                _errorMessage.value = "Error updating KYC: ${e.localizedMessage}"
+            }
+        }
+    }
+
+
+    fun logout() {
+        _kycData.value = null
+        _errorMessage.value = ""
     }
 }

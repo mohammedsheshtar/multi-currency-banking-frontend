@@ -1,5 +1,6 @@
 package com.joincoded.bankapi
 
+import ProfileScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -8,7 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -17,7 +18,6 @@ import androidx.navigation.compose.rememberNavController
 import com.joincoded.bankapi.composable.ExchangeRateScreen
 import com.joincoded.bankapi.composable.LoginScreen
 import com.joincoded.bankapi.composable.RegistrationScreen
-import com.joincoded.bankapi.composable.ProfileScreen
 import com.joincoded.bankapi.ui.theme.BankAPITheme
 
 class MainActivity : ComponentActivity() {
@@ -47,11 +47,14 @@ enum class NavRoutes(val value: String) {
     NAV_ROUTE_SHOP_SCREEN("shopScreen"),
     NAV_ROUTE_SHOP_HISTORY("shopHistory")
 }
+
 @Composable
 fun AppNavigator(
     navController: NavHostController = rememberNavController(),
     startDestination: String = NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value
 ) {
+    var userToken by remember { mutableStateOf<String?>(null) }
+
     NavHost(navController = navController, startDestination = startDestination) {
         composable(NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value) {
             LoginScreen(
@@ -70,7 +73,12 @@ fun AppNavigator(
 
         composable("${NavRoutes.NAV_ROUTE_PROFILE_SCREEN.value}/{token}") { backStackEntry ->
             val token = backStackEntry.arguments?.getString("token") ?: ""
-            ProfileScreen(token)
+            ProfileScreen(token = token, onLogout = {
+                userToken = null
+                navController.navigate(NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value) {
+                    popUpTo("${NavRoutes.NAV_ROUTE_PROFILE_SCREEN.value}/$token") { inclusive = true }
+                }
+            })
         }
     }
 }
