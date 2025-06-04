@@ -29,7 +29,7 @@
 //import androidx.compose.ui.graphics.vector.ImageVector
 //import androidx.compose.ui.graphics.vector.rememberVectorPainter
 //import androidx.compose.material.icons.filled.CheckCircle
-//import com.joincoded.bankapi.ViewModel.WalletViewModel
+//import com.joincoded.bankapi.viewmodel.WalletViewModel
 //import com.joincoded.bankapi.data.PaymentCard
 //import com.joincoded.bankapi.data.request.TransferRequest
 //import com.joincoded.bankapi.data.request.TransferLinkRequest

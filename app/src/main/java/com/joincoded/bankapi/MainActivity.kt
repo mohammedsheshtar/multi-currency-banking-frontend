@@ -1,7 +1,6 @@
 package com.joincoded.bankapi
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -12,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -21,33 +21,44 @@ import androidx.navigation.compose.rememberNavController
 import com.joincoded.bankapi.composable.*
 import com.joincoded.bankapi.network.RetrofitHelper
 import com.joincoded.bankapi.ui.theme.MultiCurrencyBankingTheme
-import com.joincoded.bankapi.viewmodel.AuthViewModel
-import com.joincoded.bankapi.viewmodel.HomeViewModel
-import com.joincoded.bankapi.viewmodel.ShopViewModel
-import com.joincoded.bankapi.viewmodel.ShopHistoryViewModel
-import com.joincoded.bankapi.viewmodel.WalletViewModel
-import com.joincoded.bankapi.viewmodel.WalletViewModelFactory
+import com.joincoded.bankapi.viewmodel.*
 import com.joincoded.bankapi.NavBar.WaveBottomNavBar
 import com.joincoded.bankapi.NavBar.NavBarItem
 import android.app.Application
 import androidx.lifecycle.ViewModelProvider
-import com.example.multicurrency_card.SVG.BankCardsIcon
-import com.example.multicurrency_card.SVG.ShopFilledIcon
-import com.joincoded.bankapi.SVG.CurrencyExchangeIcon
-import com.joincoded.bankapi.SVG.Home3FillIcon
-import com.joincoded.bankapi.SVG.UserSolidIcon
-import com.joincoded.bankapi.viewmodel.KycViewModel
+import com.example.multicurrency_card.SVG.*
+import com.joincoded.bankapi.SVG.*
 import android.util.Log
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.fragment.app.FragmentActivity
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        
+        // Configure window insets
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        
         setContent {
             MultiCurrencyBankingTheme {
+                val view = LocalView.current
+                val insetsController = remember { WindowCompat.getInsetsController(window, view) }
+                
+                // Handle system bars
+                DisposableEffect(Unit) {
+                    insetsController.apply {
+                        isAppearanceLightStatusBars = false
+                        isAppearanceLightNavigationBars = false
+                        systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                    }
+                    onDispose {}
+                }
+                
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -143,8 +154,8 @@ fun AppNavigator() {
         ) {
             composable(
                 route = "login",
-                enterTransition = { fadeIn(animationSpec = tween(300)) },
-                exitTransition = { fadeOut(animationSpec = tween(300)) }
+                enterTransition = { fadeIn(animationSpec = tween(200)) },
+                exitTransition = { fadeOut(animationSpec = tween(200)) }
             ) {
                 LoginScreen(
                     navController = navController,
@@ -158,8 +169,8 @@ fun AppNavigator() {
 
             composable(
                 route = "register",
-                enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) },
-                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300)) }
+                enterTransition = { fadeIn(animationSpec = tween(200)) },
+                exitTransition = { fadeOut(animationSpec = tween(200)) }
             ) {
                 RegistrationScreen(
                     navController = navController,
@@ -171,8 +182,8 @@ fun AppNavigator() {
 
             composable(
                 route = "home",
-                enterTransition = { fadeIn(animationSpec = tween(300)) },
-                exitTransition = { fadeOut(animationSpec = tween(300)) }
+                enterTransition = { fadeIn(animationSpec = tween(200)) },
+                exitTransition = { fadeOut(animationSpec = tween(200)) }
             ) {
                 if (currentToken.isNotBlank()) {
                     HomeScreen(
@@ -195,8 +206,8 @@ fun AppNavigator() {
 
             composable(
                 route = "exchange_rate",
-                enterTransition = { fadeIn(animationSpec = tween(300)) },
-                exitTransition = { fadeOut(animationSpec = tween(300)) }
+                enterTransition = { fadeIn(animationSpec = tween(200)) },
+                exitTransition = { fadeOut(animationSpec = tween(200)) }
             ) {
                 if (currentToken.isNotBlank()) {
                     ExchangeRateScreen(
@@ -217,8 +228,8 @@ fun AppNavigator() {
 
             composable(
                 route = "wallet",
-                enterTransition = { fadeIn(animationSpec = tween(300)) },
-                exitTransition = { fadeOut(animationSpec = tween(300)) }
+                enterTransition = { fadeIn(animationSpec = tween(200)) },
+                exitTransition = { fadeOut(animationSpec = tween(200)) }
             ) {
                 if (currentToken.isNotBlank()) {
                     WalletScreen(
@@ -239,8 +250,8 @@ fun AppNavigator() {
 
             composable(
                 route = "shop",
-                enterTransition = { fadeIn(animationSpec = tween(300)) },
-                exitTransition = { fadeOut(animationSpec = tween(300)) }
+                enterTransition = { fadeIn(animationSpec = tween(200)) },
+                exitTransition = { fadeOut(animationSpec = tween(200)) }
             ) {
                 if (currentToken.isNotBlank()) {
                     ShopScreen(
@@ -262,8 +273,8 @@ fun AppNavigator() {
 
             composable(
                 route = "profile",
-                enterTransition = { fadeIn(animationSpec = tween(300)) },
-                exitTransition = { fadeOut(animationSpec = tween(300)) }
+                enterTransition = { fadeIn(animationSpec = tween(200)) },
+                exitTransition = { fadeOut(animationSpec = tween(200)) }
             ) {
                 if (currentToken.isNotBlank()) {
                     ProfileScreen(
@@ -290,8 +301,8 @@ fun AppNavigator() {
 
             composable(
                 route = "shop_history",
-                enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) },
-                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300)) }
+                enterTransition = { fadeIn(animationSpec = tween(200)) },
+                exitTransition = { fadeOut(animationSpec = tween(200)) }
             ) {
                 if (currentToken.isNotBlank()) {
                     ShopHistoryScreen(

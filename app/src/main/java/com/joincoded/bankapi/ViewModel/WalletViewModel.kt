@@ -39,10 +39,10 @@ import com.joincoded.bankapi.data.response.CreateAccountResponse
 import com.joincoded.bankapi.utils.CardColorManager
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModelProvider
 import com.joincoded.bankapi.data.AmountChange
 import com.joincoded.bankapi.network.BankApiService
 import com.joincoded.bankapi.network.BankRepository
-import androidx.lifecycle.ViewModelProvider
 import kotlinx.coroutines.flow.asStateFlow
 
 class WalletViewModel(application: Application) : AndroidViewModel(application) {
@@ -111,8 +111,37 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
         Log.d("WalletViewModel", "Refreshing data with token: ${_token?.take(20)}...")
         viewModelScope.launch {
             try {
-                // First fetch KYC data
-                fetchKYCData()
+                // First fetch KYC data and wait for it to complete
+                var kycRetryCount = 0
+                val maxKycRetries = 3
+                
+                while (kycRetryCount < maxKycRetries) {
+                    try {
+                        fetchKYCData()
+                        // Wait a bit to ensure KYC data is processed
+                        kotlinx.coroutines.delay(500)
+                        if (_kycData.value != null) {
+                            Log.d("WalletViewModel", "✅ KYC data fetched successfully: ${_kycData.value?.let { "${it.firstName} ${it.lastName}" }}")
+                            break
+                        }
+                        kycRetryCount++
+                        if (kycRetryCount < maxKycRetries) {
+                            Log.d("WalletViewModel", "Retrying KYC fetch (attempt ${kycRetryCount + 1}/$maxKycRetries)")
+                            kotlinx.coroutines.delay(1000) // Wait before retry
+                        }
+                    } catch (e: Exception) {
+                        Log.e("WalletViewModel", "Error fetching KYC data (attempt ${kycRetryCount + 1}): ${e.message}")
+                        kycRetryCount++
+                        if (kycRetryCount < maxKycRetries) {
+                            kotlinx.coroutines.delay(1000) // Wait before retry
+                        }
+                    }
+                }
+                
+                if (_kycData.value == null) {
+                    Log.w("WalletViewModel", "⚠️ Could not fetch KYC data after $maxKycRetries attempts")
+                }
+                
                 // Then fetch user cards
                 fetchUserCards()
             } catch (e: Exception) {
@@ -149,7 +178,7 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
                 """.trimIndent())
 
                 val response = accountApiService.listUserAccounts(storedToken)
-
+                
                 if (!response.isSuccessful) {
                     Log.e("WalletViewModel", """
                         ❌ Failed to fetch accounts:
@@ -162,7 +191,7 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
 
                 val accounts = response.body() as? List<ListAccountResponse> ?: emptyList()
                 Log.d("WalletViewModel", "📊 Found ${accounts.size} accounts")
-
+                
                 // Transform accounts to cards with KYC name
                 val newCards = accounts.mapNotNull { account ->
                     try {
@@ -170,8 +199,12 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
                             Log.e("WalletViewModel", "❌ Account ID is null for account: ${account.accountNumber}")
                             return@mapNotNull null
                         }
-
+                        
                         val fullName = _kycData.value?.let { "${it.firstName} ${it.lastName}" }?.trim()
+                        if (fullName.isNullOrBlank()) {
+                            Log.w("WalletViewModel", "⚠️ No KYC name available for account ${account.accountNumber}, using account type")
+                        }
+                        
                         // Get the card color from local storage
                         val savedCardColor = cardColorManager?.getCardColor(account.accountNumber)
                         Log.d("WalletViewModel", """
@@ -218,13 +251,13 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
             - Card Type: ${card.type}
             - Current cards: ${_cards.value.map { "${it.card.accountNumber} (${it.card.accountNumber})" }}
         """.trimIndent())
-
+        
         val cardState = _cards.value.find { it.card.accountNumber == card.accountNumber }
         if (cardState == null) {
             Log.e("WalletViewModel", "❌ Card not found in current cards list!")
             return
         }
-
+        
         Log.d("WalletViewModel", "✅ Found matching card state")
         _selectedCard.value = cardState
         fetchTransactionHistory(card.accountNumber)
@@ -236,7 +269,7 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 _isLoadingTransactions.value = true
                 _transactionError.value = null
-
+                
                 Log.d("WalletViewModel", """
                     🔄 fetchTransactionHistory called:
                     - Account Number: $accountNumber
@@ -244,7 +277,7 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
                     - Current selected card: ${_selectedCard.value?.card?.accountNumber}
                     - Current cards: ${_cards.value.map { "Number: ${it.card.accountNumber}" }}
                 """.trimIndent())
-
+                
                 val storedToken = TokenManager.getToken(context)
                 if (storedToken.isNullOrBlank()) {
                     Log.e("WalletViewModel", "❌ No token found in storage")
@@ -272,7 +305,7 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
                     $card
                     - Making API request to: /api/v1/accounts/transactions/$accountNumber
                 """.trimIndent())
-
+                
                 val response = transactionApiService.getTransactionHistory(storedToken, card.card.accountId.toString())
 
                 Log.d("WalletViewModel", """
@@ -282,7 +315,7 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
                     - Raw Body: ${response.body()}
                     - Error Body: ${response.errorBody()?.string()}
                 """.trimIndent())
-
+                
                 if (response.isSuccessful) {
                     val rawBody = response.body()
                     // Convert the non-JSON format to proper JSON using regex
@@ -305,12 +338,12 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
                         .replace("\\]", "]")
                         .replace("\\{", "{")
                         .replace("\\}", "}")
-
+                    
                     val type = com.google.gson.reflect.TypeToken.getParameterized(
                         List::class.java,
                         TransactionHistoryResponse::class.java
                     ).type
-
+                    
                     val history = try {
                         RetrofitHelper.gson.fromJson<List<TransactionHistoryResponse>>(jsonString, type) ?: emptyList()
                     } catch (e: Exception) {
@@ -335,7 +368,7 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
                         // Format the LocalDateTime to a String
                         val displayFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' hh:mm a")
                         val formattedDate = it.timeStamp.format(displayFormatter).toString()
-
+                        
                         TransactionItem(
                             id = UUID.randomUUID().toString(),
                             title = it.transactionType,
@@ -370,7 +403,7 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
                         """.trimIndent())
                         fetchUserCards() // Refresh the cards list
                         _transactionError.value = "Account not found - refreshing account list"
-
+                        
                         // If the account is no longer in the refreshed list, clear the selected card
                         if (!_cards.value.any { it.card.accountNumber == accountNumber }) {
                             Log.d("WalletViewModel", "Account no longer exists, clearing selected card")
@@ -457,7 +490,7 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
                     accountNumber = fromCard.accountNumber,
                     request = transferRequest
                 )
-
+                
                 if (!response.isSuccessful) {
                     val errorBody = response.errorBody()?.string()
                     Log.e("WalletViewModel", """
@@ -494,6 +527,111 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /*
+    // Commented out as these methods are not used in the app
+    fun deposit(
+        card: PaymentCard,
+        amount: String,
+        currency: String,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        val context = context ?: return
+        viewModelScope.launch {
+            try {
+                val storedToken = TokenManager.getToken(context)
+                if (storedToken.isNullOrBlank()) {
+                    onError("Authentication required - no token found")
+                    return@launch
+                }
+
+                val request = AmountChange(
+                    amount = amount.toBigDecimal(),
+                    countryCode = getCurrencyCode(currency)
+                )
+
+                Log.d("WalletViewModel", """
+                    🔄 Initiating deposit:
+                    - Account: ${card.accountNumber}
+                    - Amount: $amount
+                    - Currency: $currency
+                """.trimIndent())
+
+                val response = RetrofitHelper.BankApi.deposit(
+                    token = storedToken,
+                    accountNumber = card.accountNumber,
+                    amountChange = request
+                )
+
+                if (!response.isSuccessful) {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("WalletViewModel", "❌ Deposit failed: $errorBody")
+                    onError("Deposit failed: ${response.code()} - $errorBody")
+                    return@launch
+                }
+
+                Log.d("WalletViewModel", "✅ Deposit successful")
+                refreshTransactionsAndCards()
+                onSuccess()
+            } catch (e: Exception) {
+                Log.e("WalletViewModel", "❌ Deposit error", e)
+                onError("Deposit failed: ${e.message}")
+            }
+        }
+    }
+
+    fun withdraw(
+        card: PaymentCard,
+        amount: String,
+        currency: String,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        val context = context ?: return
+        viewModelScope.launch {
+            try {
+                val storedToken = TokenManager.getToken(context)
+                if (storedToken.isNullOrBlank()) {
+                    onError("Authentication required - no token found")
+                    return@launch
+                }
+
+                val request = AmountChange(
+                    amount = amount.toBigDecimal(),
+                    countryCode = getCurrencyCode(currency)
+                )
+
+                Log.d("WalletViewModel", """
+                    🔄 Initiating withdrawal:
+                    - Account: ${card.accountNumber}
+                    - Amount: $amount
+                    - Currency: $currency
+                """.trimIndent())
+
+                val response = RetrofitHelper.BankApi.withdraw(
+                    token = storedToken,
+                    accountNumber = card.accountNumber,
+                    amountChange = request
+                )
+
+                if (!response.isSuccessful) {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("WalletViewModel", "❌ Withdrawal failed: $errorBody")
+                    onError("Withdrawal failed: ${response.code()} - $errorBody")
+                    return@launch
+                }
+
+                Log.d("WalletViewModel", "✅ Withdrawal successful")
+                refreshTransactionsAndCards()
+                onSuccess()
+            } catch (e: Exception) {
+                Log.e("WalletViewModel", "❌ Withdrawal error", e)
+                onError("Withdrawal failed: ${e.message}")
+            }
+        }
+    }
+    */
+
     fun closeAccount(accountNumber: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
         val context = context ?: return
         viewModelScope.launch {
@@ -506,7 +644,7 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
 
                 Log.d("WalletViewModel", "🔒 Attempting to close account: $accountNumber")
                 val response = accountApiService.closeAccount(storedToken, accountNumber)
-
+                
                 if (response.isSuccessful) {
                     // Clear the saved card color
                     cardColorManager?.clearCardColor(accountNumber)
@@ -570,7 +708,7 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
                 )
 
                 val response = accountApiService.createAccount(storedToken, request)
-
+                
                 if (!response.isSuccessful) {
                     val errorBody = response.errorBody()?.string()
                     Log.e("WalletViewModel", """
@@ -625,7 +763,7 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
 
                 val response = kycApiService.getMyKYC(token)
                 val parsedBody = response.body()
-
+                
                 Log.d("WalletViewModel", """
                     📡 KYC API Response:
                     - Code: ${response.code()}
@@ -633,7 +771,7 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
                     - Is Successful: ${response.isSuccessful}
                     - Response Body: $parsedBody
                 """.trimIndent())
-
+                
                 if (response.isSuccessful) {
                     if (parsedBody != null) {
                         _kycData.value = parsedBody
@@ -674,7 +812,7 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 // Update the card color in the local storage
                 cardColorManager?.saveCardColor(accountNumber, newColor)
-
+                
                 // Update the card in the local state
                 _cards.value = _cards.value.map { cardState ->
                     if (cardState.card.accountNumber == accountNumber) {
@@ -688,11 +826,15 @@ class WalletViewModel(application: Application) : AndroidViewModel(application) 
                         cardState
                     }
                 }
-
+                
                 Log.d("WalletViewModel", "Card color updated for account $accountNumber to $newColor")
             } catch (e: Exception) {
                 Log.e("WalletViewModel", "Error updating card color: ${e.message}")
             }
         }
+    }
+
+    fun loginAndLoadWallet(context: Context) {
+        // ... existing code ...
     }
 }

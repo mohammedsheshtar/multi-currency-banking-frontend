@@ -2,6 +2,7 @@ package com.joincoded.bankapi.ui.theme
 
 import android.app.Activity
 import android.os.Build
+import android.view.WindowInsets
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -15,6 +16,8 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 // Define the color variables first
 private val Purple80 = Color(0xFFD0BCFF)
@@ -41,7 +44,7 @@ private val LightColorScheme = lightColorScheme(
 fun MultiCurrencyBankingTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -59,7 +62,7 @@ fun MultiCurrencyBankingTheme(
             window.statusBarColor = Color.Black.toArgb()
             WindowCompat.getInsetsController(window, view).apply {
                 isAppearanceLightStatusBars = false
-                isAppearanceLightNavigationBars = false
+                hide(android.view.WindowInsets.Type.systemBars())
             }
         }
     }

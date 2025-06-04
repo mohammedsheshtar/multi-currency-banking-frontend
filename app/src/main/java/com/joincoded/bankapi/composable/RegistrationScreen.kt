@@ -252,23 +252,29 @@ fun RegistrationScreen(
 
                 Button(
                     onClick = {
-                        val createUserDTO = CreateUserDTO(username, password)
-                        val kycRequest = KYCRequest(
+                        authViewModel.register(
+                            username = username,
+                            password = password,
                             firstName = firstName,
                             lastName = lastName,
                             dateOfBirth = dateOfBirth,
-                            civilId = civilId,
-                            country = country,
-                            phoneNumber = phoneNumber,
-                            homeAddress = homeAddress,
-                            salary = salary.toBigDecimalOrNull() ?: java.math.BigDecimal.ZERO
+                            context = context,
+                            onSuccess = {
+                                // Registration successful
+                                // The LaunchedEffect will handle navigation when isLoggedIn becomes true
+                            },
+                            onError = { error ->
+                                // Error is already set in authViewModel.errorMessage
+                                // The error message will be displayed below the button
+                            }
                         )
-                        // TODO: Implement register function in AuthViewModel
-                        // authViewModel.register(createUserDTO, kycRequest)
                     },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
                 ) {
-                    Text("Register")
+                    Text("Register", color = primaryDark)
                 }
             }
 

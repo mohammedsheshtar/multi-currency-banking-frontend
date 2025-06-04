@@ -230,7 +230,7 @@ fun FanCarouselView(
         } else if (showTransferScreen && focusedCard != null) {
             val currentCard = focusedCard
             if (currentCard != null) {
-                TransactionTransferScreen(
+                TransferScreen(
                     cards = walletCards.map { it.card },
                     amount = "",
                     onAmountChanged = { /* Handled inside TransferScreen */ },

@@ -111,6 +111,9 @@ fun PayMeScreen(
     LaunchedEffect(Unit) {
         isBiometricAvailable = biometricManager.canAuthenticate()
         Log.d("PayMe", "Biometric availability: $isBiometricAvailable")
+        if (!isBiometricAvailable) {
+            Log.d("PayMe", "Biometric authentication is not available on this device")
+        }
     }
 
     // Add BackHandler
@@ -265,6 +268,137 @@ fun PayMeScreen(
         ),
         label = "iconRotation"
     )
+
+    // Add this function to handle biometric authentication
+    fun handleBiometricAuthentication() {
+        if (!isBiometricAvailable) {
+            Log.e("PayMe", "Biometric authentication not available")
+            showError = "Biometric authentication is not available on this device"
+            showModal = false
+            return
+        }
+
+        showBiometricPrompt = true
+        activity?.let { fragmentActivity ->
+            if (fragmentActivity is FragmentActivity) {
+                biometricManager.authenticate(
+                    activity = fragmentActivity,
+                    onSuccess = {
+                        Log.d("PayMe", "Biometric authentication successful")
+                        showBiometricPrompt = false
+                        isLoading = true
+                        coroutineScope.launch {
+                            try {
+                                val token = TokenManager.getToken(context)
+                                if (token == null) {
+                                    Log.e("PayMe", "❌ No token found in storage")
+                                    showError = "Authentication required"
+                                    isLoading = false
+                                    return@launch
+                                }
+
+                                val paymentLinkRequest = PaymentLinkRequest(
+                                    accountNumber = fromCard.accountNumber,
+                                    amount = amount.toDoubleOrNull() ?: 0.0,
+                                    currencyCode = getCurrencyCode(fromCard.currency),
+                                    description = description.ifEmpty { "Payment request" }
+                                )
+
+                                val response = RetrofitHelper.TransactionApi.generatePaymentLink(
+                                    token = "Bearer $token",
+                                    request = paymentLinkRequest
+                                )
+
+                                if (response.isSuccessful) {
+                                    paymentLink = response.body()
+                                    isLinkGenerated = true
+                                    Log.d("PayMe", "✅ Payment link generated successfully")
+                                } else {
+                                    val errorBody = response.errorBody()?.string()
+                                    Log.e("PayMe", """
+                                        ❌ Failed to generate payment link:
+                                        - Status Code: ${response.code()}
+                                        - Error Body: $errorBody
+                                    """.trimIndent())
+                                    showError = "Failed to generate payment link: ${response.code()} - $errorBody"
+                                    showModal = false
+                                }
+                            } catch (e: Exception) {
+                                Log.e("PayMe", "Error generating payment link", e)
+                                showError = "Failed to generate payment link: ${e.message}"
+                                showModal = false
+                            } finally {
+                                isLoading = false
+                            }
+                        }
+                    },
+                    onError = { error ->
+                        Log.e("PayMe", "Biometric authentication error: $error")
+                        showBiometricPrompt = false
+                        showError = error
+                        showModal = false
+                    },
+                    onFallback = {
+                        Log.d("PayMe", "Falling back to password")
+                        showBiometricPrompt = false
+                        isLoading = true
+                        coroutineScope.launch {
+                            try {
+                                val token = TokenManager.getToken(context)
+                                if (token == null) {
+                                    Log.e("PayMe", "❌ No token found in storage")
+                                    showError = "Authentication required"
+                                    isLoading = false
+                                    return@launch
+                                }
+
+                                val paymentLinkRequest = PaymentLinkRequest(
+                                    accountNumber = fromCard.accountNumber,
+                                    amount = amount.toDoubleOrNull() ?: 0.0,
+                                    currencyCode = getCurrencyCode(fromCard.currency),
+                                    description = description.ifEmpty { "Payment request" }
+                                )
+
+                                val response = RetrofitHelper.TransactionApi.generatePaymentLink(
+                                    token = "Bearer $token",
+                                    request = paymentLinkRequest
+                                )
+
+                                if (response.isSuccessful) {
+                                    paymentLink = response.body()
+                                    isLinkGenerated = true
+                                    Log.d("PayMe", "✅ Payment link generated successfully")
+                                } else {
+                                    val errorBody = response.errorBody()?.string()
+                                    Log.e("PayMe", """
+                                        ❌ Failed to generate payment link:
+                                        - Status Code: ${response.code()}
+                                        - Error Body: $errorBody
+                                    """.trimIndent())
+                                    showError = "Failed to generate payment link: ${response.code()} - $errorBody"
+                                    showModal = false
+                                }
+                            } catch (e: Exception) {
+                                Log.e("PayMe", "Error generating payment link", e)
+                                showError = "Failed to generate payment link: ${e.message}"
+                                showModal = false
+                            } finally {
+                                isLoading = false
+                            }
+                        }
+                    }
+                )
+            } else {
+                Log.e("PayMe", "Activity is not a FragmentActivity: ${fragmentActivity.javaClass.simpleName}")
+                showError = "Unable to start biometric authentication"
+                showModal = false
+            }
+        } ?: run {
+            Log.e("PayMe", "Activity context is null")
+            showError = "Unable to start biometric authentication"
+            showModal = false
+        }
+    }
 
     Column(
         modifier = modifier
@@ -512,218 +646,7 @@ fun PayMeScreen(
                                             indication = null
                                         ) {
                                             Log.d("PayMe", "Fingerprint icon clicked")
-                                            showBiometricPrompt = true
-                                            activity?.let { fragmentActivity ->
-                                                if (fragmentActivity is FragmentActivity) {
-                                                    biometricManager.authenticate(
-                                                        activity = fragmentActivity,
-                                                        onSuccess = {
-                                                            Log.d("PayMe", "Biometric authentication successful")
-                                                            showBiometricPrompt = false
-                                                            isLoading = true
-                                                            coroutineScope.launch {
-                                                                try {
-                                                                    val token = TokenManager.getToken(context)
-                                                                    if (token == null) {
-                                                                        Log.e("PayMe", "❌ No token found in storage")
-                                                                        showError = "Authentication required"
-                                                                        isLoading = false
-                                                                        return@launch
-                                                                    }
-
-                                                                    val paymentLinkRequest = PaymentLinkRequest(
-                                                                        accountNumber = fromCard.accountNumber,
-                                                                        amount = amount.toDoubleOrNull() ?: 0.0,
-                                                                        currencyCode = getCurrencyCode(fromCard.currency),
-                                                                        description = description.ifEmpty { "Payment request" }
-                                                                    )
-
-                                                                    Log.d("PayMe", """
-                                                                        🔄 Generating payment link with request:
-                                                                        - Account Number: ${paymentLinkRequest.accountNumber}
-                                                                        - Amount: ${paymentLinkRequest.amount}
-                                                                        - Currency Code: ${paymentLinkRequest.currencyCode}
-                                                                        - Description: ${paymentLinkRequest.description}
-                                                                    """.trimIndent())
-                                                                    
-                                                                    RetrofitHelper.clearRetrofitInstance()
-                                                                    
-                                                                    val response = RetrofitHelper.TransactionApi.generatePaymentLink(
-                                                                        token = token,
-                                                                        request = paymentLinkRequest
-                                                                    )
-                                                                    
-                                                                    Log.d("PayMe", """
-                                                                        📥 Raw API Response:
-                                                                        - Code: ${response.code()}
-                                                                        - Message: ${response.message()}
-                                                                        - Is Successful: ${response.isSuccessful}
-                                                                        - Raw Body: ${response.body()?.toString()}
-                                                                        - Error Body: ${response.errorBody()?.string()}
-                                                                    """.trimIndent())
-                                                                    
-                                                                    if (response.isSuccessful) {
-                                                                        val responseBody = response.body()
-                                                                        if (responseBody != null) {
-                                                                            Log.d("PayMe", """
-                                                                                📥 Response Body Details:
-                                                                                - Full Response Object: $responseBody
-                                                                                - Payment Link Field: ${responseBody.paymentLink}
-                                                                                - Amount: ${responseBody.amount}
-                                                                                - Currency: ${responseBody.currency}
-                                                                                - Description: ${responseBody.description}
-                                                                                - Expires At: ${responseBody.expiresAt}
-                                                                                - Class Type: ${responseBody.javaClass.name}
-                                                                            """.trimIndent())
-                                                                            
-                                                                            paymentLink = responseBody
-                                                                            Log.d("PayMe", """
-                                                                                ✅ Payment link after assignment:
-                                                                                - Payment Link: ${paymentLink?.paymentLink}
-                                                                                - Amount: ${paymentLink?.amount}
-                                                                                - Currency: ${paymentLink?.currency}
-                                                                                - Description: ${paymentLink?.description}
-                                                                                - Expires At: ${paymentLink?.expiresAt}
-                                                                            """.trimIndent())
-                                                                            isLinkGenerated = true
-                                                                            amount = ""
-                                                                            description = ""
-                                                                        } else {
-                                                                            Log.e("PayMe", "❌ Response body is null despite successful response")
-                                                                            showError = "Failed to generate payment link: Response body is null"
-                                                                            showModal = false
-                                                                        }
-                                                                    } else {
-                                                                        val errorBody = response.errorBody()?.string()
-                                                                        Log.e("PayMe", """
-                                                                            ❌ Failed to generate payment link:
-                                                                            - Status Code: ${response.code()}
-                                                                            - Error Body: $errorBody
-                                                                        """.trimIndent())
-                                                                        showError = "Failed to generate payment link: ${response.code()} - $errorBody"
-                                                                        showModal = false
-                                                                    }
-                                                                } catch (e: Exception) {
-                                                                    Log.e("PayMe", "❌ Exception generating payment link: ${e.message}")
-                                                                    showError = "Failed to generate payment link: ${e.message}"
-                                                                    showModal = false
-                                                                } finally {
-                                                                    isLoading = false
-                                                                }
-                                                            }
-                                                        },
-                                                        onError = { error ->
-                                                            Log.e("PayMe", "Biometric authentication error: $error")
-                                                            showBiometricPrompt = false
-                                                            showError = error
-                                                            showModal = false
-                                                        },
-                                                        onFallback = {
-                                                            Log.d("PayMe", "Falling back to password")
-                                                            showBiometricPrompt = false
-                                                            isLoading = true
-                                                            coroutineScope.launch {
-                                                                try {
-                                                                    val token = TokenManager.getToken(context)
-                                                                    if (token == null) {
-                                                                        Log.e("PayMe", "❌ No token found in storage")
-                                                                        showError = "Authentication required"
-                                                                        isLoading = false
-                                                                        return@launch
-                                                                    }
-
-                                                                    val paymentLinkRequest = PaymentLinkRequest(
-                                                                        accountNumber = fromCard.accountNumber,
-                                                                        amount = amount.toDoubleOrNull() ?: 0.0,
-                                                                        currencyCode = getCurrencyCode(fromCard.currency),
-                                                                        description = description.ifEmpty { "Payment request" }
-                                                                    )
-
-                                                                    Log.d("PayMe", """
-                                                                        🔄 Generating payment link with request:
-                                                                        - Account Number: ${paymentLinkRequest.accountNumber}
-                                                                        - Amount: ${paymentLinkRequest.amount}
-                                                                        - Currency Code: ${paymentLinkRequest.currencyCode}
-                                                                        - Description: ${paymentLinkRequest.description}
-                                                                    """.trimIndent())
-                                                                    
-                                                                    RetrofitHelper.clearRetrofitInstance()
-                                                                    
-                                                                    val response = RetrofitHelper.TransactionApi.generatePaymentLink(
-                                                                        token = token,
-                                                                        request = paymentLinkRequest
-                                                                    )
-                                                                    
-                                                                    Log.d("PayMe", """
-                                                                        📥 Raw API Response:
-                                                                        - Code: ${response.code()}
-                                                                        - Message: ${response.message()}
-                                                                        - Is Successful: ${response.isSuccessful}
-                                                                        - Raw Body: ${response.body()?.toString()}
-                                                                        - Error Body: ${response.errorBody()?.string()}
-                                                                    """.trimIndent())
-                                                                    
-                                                                    if (response.isSuccessful) {
-                                                                        val responseBody = response.body()
-                                                                        if (responseBody != null) {
-                                                                            Log.d("PayMe", """
-                                                                                📥 Response Body Details:
-                                                                                - Full Response Object: $responseBody
-                                                                                - Payment Link Field: ${responseBody.paymentLink}
-                                                                                - Amount: ${responseBody.amount}
-                                                                                - Currency: ${responseBody.currency}
-                                                                                - Description: ${responseBody.description}
-                                                                                - Expires At: ${responseBody.expiresAt}
-                                                                                - Class Type: ${responseBody.javaClass.name}
-                                                                            """.trimIndent())
-                                                                            
-                                                                            paymentLink = responseBody
-                                                                            Log.d("PayMe", """
-                                                                                ✅ Payment link after assignment:
-                                                                                - Payment Link: ${paymentLink?.paymentLink}
-                                                                                - Amount: ${paymentLink?.amount}
-                                                                                - Currency: ${paymentLink?.currency}
-                                                                                - Description: ${paymentLink?.description}
-                                                                                - Expires At: ${paymentLink?.expiresAt}
-                                                                            """.trimIndent())
-                                                                            isLinkGenerated = true
-                                                                            amount = ""
-                                                                            description = ""
-                                                                        } else {
-                                                                            Log.e("PayMe", "❌ Response body is null despite successful response")
-                                                                            showError = "Failed to generate payment link: Response body is null"
-                                                                            showModal = false
-                                                                        }
-                                                                    } else {
-                                                                        val errorBody = response.errorBody()?.string()
-                                                                        Log.e("PayMe", """
-                                                                            ❌ Failed to generate payment link:
-                                                                            - Status Code: ${response.code()}
-                                                                            - Error Body: $errorBody
-                                                                        """.trimIndent())
-                                                                        showError = "Failed to generate payment link: ${response.code()} - $errorBody"
-                                                                        showModal = false
-                                                                    }
-                                                                } catch (e: Exception) {
-                                                                    Log.e("PayMe", "❌ Exception generating payment link: ${e.message}")
-                                                                    showError = "Failed to generate payment link: ${e.message}"
-                                                                    showModal = false
-                                                                } finally {
-                                                                    isLoading = false
-                                                                }
-                                                            }
-                                                        }
-                                                    )
-                                                } else {
-                                                    Log.e("PayMe", "Activity is not a FragmentActivity: ${fragmentActivity.javaClass.simpleName}")
-                                                    showError = "Unable to start biometric authentication"
-                                                    showModal = false
-                                                }
-                                            } ?: run {
-                                                Log.e("PayMe", "Activity context is null")
-                                                showError = "Unable to start biometric authentication"
-                                                showModal = false
-                                            }
+                                            handleBiometricAuthentication()
                                         },
                                     contentAlignment = Alignment.Center
                                 ) {
