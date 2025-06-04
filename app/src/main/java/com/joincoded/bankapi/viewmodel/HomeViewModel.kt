@@ -35,7 +35,7 @@ class HomeViewModel : ViewModel() {
             try {
                 println("🔁 Attempting login...")
                 val response = RetrofitHelper.AuthenticationApi.login(
-                    AuthenticationRequest("JAWADa123", "12345asdFG")
+                    AuthenticationRequest("JAWADa1123", "12345assdFG")
                 )
                 if (response.isSuccessful) {
                     token = "Bearer ${response.body()?.token}"

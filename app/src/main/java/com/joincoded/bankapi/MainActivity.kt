@@ -61,6 +61,10 @@ class MainActivity : ComponentActivity() {
 
                             ShopHistoryScreen(viewModel = shopHistoryViewModel, token = token)
                         }
+
+                        composable(NavRoutes.NAV_ROUTE_EXCHANGE_RATE_SCREEN.value) {
+                            ExchangeRateScreen()
+                        }
                     }
                 }
             }
