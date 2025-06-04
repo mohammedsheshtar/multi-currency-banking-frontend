@@ -31,6 +31,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -57,6 +58,84 @@ import com.joincoded.bankapi.utils.BiometricManager
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 
+// Add performTransfer as a private function outside the composable
+private fun performTransfer(
+    walletViewModel: WalletViewModel?,
+    fromCard: PaymentCard,
+    toCard: PaymentCard,
+    amount: String,
+    password: String,
+    onAmountChanged: (String) -> Unit,
+    onTransfer: (String) -> Unit,
+    coroutineScope: kotlinx.coroutines.CoroutineScope,
+    walletCards: List<CardState>,
+    currentCards: List<PaymentCard>,
+    onSuccess: (String, String) -> Unit,
+    onError: (String) -> Unit
+) {
+    val currentFromCard = fromCard // Store the current from card
+    walletViewModel?.transfer(
+        fromCard = currentFromCard,
+        toCard = toCard,
+        amount = amount,
+        currency = currentFromCard.currency,
+        onSuccess = {
+            Log.d("TransferScreen", "🎉 Transfer successful callback received")
+            val finalAmount = amount
+            val finalCurrency = currentFromCard.currency
+            onAmountChanged("")
+            onSuccess(finalAmount, finalCurrency)
+            
+            // Refresh card data after successful transaction
+            coroutineScope.launch {
+                try {
+                    Log.d("TransferScreen", "🔄 Refreshing card data after successful transfer")
+                    walletViewModel.fetchUserCards()
+                    
+                    // Wait for cards to update
+                    delay(500)
+                    
+                    // Update fromCard with fresh data
+                    val updatedFromCard = walletCards.find { it.card.accountNumber == currentFromCard.accountNumber }?.card
+                    if (updatedFromCard != null) {
+                        Log.d("TransferScreen", "✅ Updated fromCard with fresh data: ${updatedFromCard.balance} ${updatedFromCard.currency}")
+                    }
+                    
+                    // Update toCard with fresh data
+                    val updatedToCard = walletCards.find { it.card.accountNumber == toCard.accountNumber }?.card
+                    if (updatedToCard != null) {
+                        Log.d("TransferScreen", "✅ Updated toCard with fresh data: ${updatedToCard.balance} ${updatedToCard.currency}")
+                    }
+                } catch (e: Exception) {
+                    Log.e("TransferScreen", "❌ Error refreshing card data: ${e.message}", e)
+                }
+            }
+            
+            onTransfer(password)
+        },
+        onError = { error: String ->
+            Log.e("TransferScreen", """
+                ❌ Transfer failed with error: $error
+                Details:
+                - From Card Balance: ${currentFromCard.balance}
+                - To Card Balance: ${toCard.balance}
+                - Transfer Amount: $amount
+                - Currency: ${currentFromCard.currency}
+            """.trimIndent())
+            
+            val errorMessage = when {
+                error.contains("insufficient balance") -> 
+                    "Transfer failed due to insufficient balance.\n\n" +
+                    "Current balance: ${currentFromCard.balance} ${currentFromCard.currency}\n" +
+                    "Transfer amount: $amount ${currentFromCard.currency}\n" +
+                    "Try using a slightly smaller amount."
+                else -> "Transfer failed: $error"
+            }
+            onError(errorMessage)
+        }
+    )
+}
+
 @OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun TransferScreen(
@@ -73,7 +152,6 @@ fun TransferScreen(
     var modalScale by remember { mutableStateOf(0.8f) }
     var modalAlpha by remember { mutableStateOf(0f) }
     val coroutineScope = rememberCoroutineScope()
-    var swipeDirection by remember { mutableStateOf(0) }
     var showPasswordDialog by remember { mutableStateOf(false) }
     var showErrorDialog by remember { mutableStateOf(false) }
     var showBiometricPrompt by remember { mutableStateOf(false) }
@@ -87,24 +165,12 @@ fun TransferScreen(
     val context = LocalContext.current
     
     val activity = remember(context) {
-        when (context) {
-            is FragmentActivity -> context
-            is ComponentActivity -> {
-                // Try to find a FragmentActivity in the context hierarchy
-                var currentContext = context
-                while (currentContext is ContextWrapper) {
-                    if (currentContext is FragmentActivity) {
-                        return@remember currentContext
-                    }
-                    currentContext = currentContext.baseContext
-                }
-                // If no FragmentActivity is found, use the ComponentActivity
-                context
-            }
+        when (val ctx = context) {
+            is ComponentActivity -> ctx
             is ContextWrapper -> {
-                var currentContext = context.baseContext
+                var currentContext = ctx.baseContext
                 while (currentContext is ContextWrapper) {
-                    if (currentContext is FragmentActivity) {
+                    if (currentContext is ComponentActivity) {
                         return@remember currentContext
                     }
                     currentContext = currentContext.baseContext
@@ -116,50 +182,46 @@ fun TransferScreen(
     }
     val biometricManager = remember { BiometricManager(context.applicationContext) }
 
-    // Observe the cards state from WalletViewModel with explicit type
+    // Update card state handling
     val walletCardsState = walletViewModel?.cards?.collectAsStateWithLifecycle<List<CardState>>(initialValue = emptyList())
     val walletCards = walletCardsState?.value ?: emptyList()
     val currentCards: List<PaymentCard> = walletCards.map { it.card }
 
     // Use initialFromCard if provided, otherwise use first card
-    var fromCard: PaymentCard by remember { 
+    var fromCardIndex by remember { mutableStateOf(0) }
+    var toCardIndex by remember { mutableStateOf(1.coerceAtMost(currentCards.lastIndex)) }
+    
+    val fromCard: PaymentCard by remember(fromCardIndex, currentCards) {
         mutableStateOf(
-            initialFromCard ?: currentCards.firstOrNull() ?: cards.firstOrNull() 
+            initialFromCard ?: currentCards.getOrNull(fromCardIndex) ?: cards.firstOrNull() 
                 ?: throw IllegalStateException("No cards available")
         )
     }
     
-    // Set initial toCard to be different from fromCard
-    var currentToIndex: Int by remember { 
+    val toCard: PaymentCard by remember(toCardIndex, currentCards) {
         mutableStateOf(
-            currentCards.indexOfFirst { card -> card.accountNumber != fromCard.accountNumber }.coerceAtLeast(0)
+            currentCards.getOrNull(toCardIndex) 
+                ?: cards.firstOrNull { card -> card.accountNumber != fromCard.accountNumber } 
+                ?: cards.firstOrNull() 
+                ?: fromCard
         )
     }
-    
-    // Update fromCard and toCard when walletCards changes
+
+    // Update card indices when walletCards changes
     LaunchedEffect(walletCards) {
         if (walletCards.isEmpty()) return@LaunchedEffect
         
         // Find the updated versions of our cards
         val updatedFromCard = walletCards.find { it.card.accountNumber == fromCard.accountNumber }?.card
-        val updatedToCard = currentCards.getOrNull(currentToIndex)
+        val updatedToCard = currentCards.getOrNull(toCardIndex)
         
         if (updatedFromCard != null) {
-            fromCard = updatedFromCard
+            fromCardIndex = currentCards.indexOf(updatedFromCard)
         }
         
         if (updatedToCard != null) {
-            currentToIndex = currentCards.indexOf(updatedToCard)
+            toCardIndex = currentCards.indexOf(updatedToCard)
         }
-    }
-    
-    val toCard: PaymentCard by remember(currentToIndex, currentCards) {
-        mutableStateOf(
-            currentCards.getOrNull(currentToIndex) 
-                ?: cards.firstOrNull { card -> card.accountNumber != fromCard.accountNumber } 
-                ?: cards.firstOrNull() 
-                ?: fromCard
-        )
     }
 
     // Add LaunchedEffect to observe transaction updates
@@ -167,121 +229,8 @@ fun TransferScreen(
         walletViewModel?.fetchUserCards()
     }
 
-    // Add swipe handling with safety checks
-    fun handleSwipe(dragAmount: Float) {
-        if (currentCards.isEmpty()) return
-        
-        val newIndex = when {
-            dragAmount < -40 -> (currentToIndex + 1) % currentCards.size
-            dragAmount > 40 -> (currentToIndex - 1 + currentCards.size) % currentCards.size
-            else -> currentToIndex
-        }
-        
-        // Only update if the new card is different from the fromCard
-        if (currentCards.getOrNull(newIndex)?.accountNumber != fromCard.accountNumber) {
-            currentToIndex = newIndex
-            swipeDirection = if (dragAmount < 0) -1 else 1
-        }
-    }
-
-    // Update performTransfer to refresh data after transaction
-    fun performTransfer() {
-        val currentFromCard = fromCard // Store the current from card
-        walletViewModel?.transfer(
-            fromCard = currentFromCard,
-            toCard = toCard,
-            amount = amount,
-            currency = currentFromCard.currency,
-            onSuccess = {
-                Log.d("TransferScreen", "🎉 Transfer successful callback received")
-                val finalAmount = amount
-                val finalCurrency = currentFromCard.currency
-                onAmountChanged("")
-                showSuccessDialog = true
-                transferAmount = finalAmount
-                transferCurrency = finalCurrency
-                
-                // Refresh card data after successful transaction
-                coroutineScope.launch {
-                    try {
-                        Log.d("TransferScreen", "🔄 Refreshing card data after successful transfer")
-                        walletViewModel?.fetchUserCards()
-                        
-                        // Wait for cards to update
-                        delay(500)
-                        
-                        // Update fromCard with fresh data
-                        val updatedFromCard = walletCards.find { it.card.accountNumber == currentFromCard.accountNumber }?.card
-                        if (updatedFromCard != null) {
-                            fromCard = updatedFromCard
-                            Log.d("TransferScreen", "✅ Updated fromCard with fresh data: ${updatedFromCard.balance} ${updatedFromCard.currency}")
-                        }
-                        
-                        // Update toCard with fresh data
-                        val updatedToCard = walletCards.find { it.card.accountNumber == toCard.accountNumber }?.card
-                        if (updatedToCard != null) {
-                            currentToIndex = currentCards.indexOf(updatedToCard)
-                            Log.d("TransferScreen", "✅ Updated toCard with fresh data: ${updatedToCard.balance} ${updatedToCard.currency}")
-                        }
-                    } catch (e: Exception) {
-                        Log.e("TransferScreen", "❌ Error refreshing card data: ${e.message}", e)
-                    }
-                }
-                
-                onTransfer(password)
-            },
-            onError = { error: String ->
-                Log.e("TransferScreen", """
-                    ❌ Transfer failed with error: $error
-                    Details:
-                    - From Card Balance: ${currentFromCard.balance}
-                    - To Card Balance: ${toCard.balance}
-                    - Transfer Amount: $amount
-                    - Currency: ${currentFromCard.currency}
-                """.trimIndent())
-                
-                errorDialogMessage = when {
-                    error.contains("insufficient balance") -> 
-                        "Transfer failed due to insufficient balance.\n\n" +
-                        "Current balance: ${currentFromCard.balance} ${currentFromCard.currency}\n" +
-                        "Transfer amount: $amount ${currentFromCard.currency}\n" +
-                        "Try using a slightly smaller amount."
-                    else -> "Transfer failed: $error"
-                }
-                // Ensure fromCard remains the same after error
-                fromCard = currentFromCard
-                showErrorDialog = true
-            }
-        )
-    }
-
-    // Add BackHandler
-    BackHandler {
-        when {
-            showSuccessDialog -> {
-                // Don't allow back navigation when success dialog is showing
-                // User must use the "Done" button
-                Log.d("TransferScreen", "Back pressed while success dialog showing - ignoring")
-            }
-            showPasswordDialog -> {
-                // Close password dialog on back press
-                Log.d("TransferScreen", "Back pressed while password dialog showing - closing dialog")
-                showPasswordDialog = false
-            }
-            showErrorDialog -> {
-                // Close error dialog on back press
-                Log.d("TransferScreen", "Back pressed while error dialog showing - closing dialog")
-                showErrorDialog = false
-            }
-            else -> {
-                // Normal back navigation
-                Log.d("TransferScreen", "Back pressed - navigating back")
-                onBack()
-            }
-        }
-    }
-
-    var isSwapping: Boolean by remember { mutableStateOf(false) }
+    var isSwapping by remember { mutableStateOf(false) }
+    val vibrator = context.getSystemService(Vibrator::class.java)
 
     // Add state for showing conversion info
     var showConversionInfo by remember { mutableStateOf(false) }
@@ -375,7 +324,13 @@ fun TransferScreen(
                             .pointerInput(Unit) {
                                 detectHorizontalDragGestures { _, dragAmount ->
                                     if (!isSwapping) {
-                                        handleSwipe(dragAmount)
+                                        if (dragAmount < -40 && toCardIndex < currentCards.lastIndex) {
+                                            toCardIndex = (toCardIndex + 1) % currentCards.size
+                                            vibrator?.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+                                        } else if (dragAmount > 40 && toCardIndex > 0) {
+                                            toCardIndex = (toCardIndex - 1 + currentCards.size) % currentCards.size
+                                            vibrator?.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+                                        }
                                     }
                                 }
                             },
@@ -387,14 +342,7 @@ fun TransferScreen(
                                 if (isSwapping) {
                                     (slideInVertically { -it } + fadeIn()) with (slideOutVertically { -it } + fadeOut())
                                 } else {
-                                    // Match animation direction with swipe direction
-                                    if (swipeDirection < 0) {
-                                        // Swipe left: new card comes from right, old card goes left
-                                        (slideInHorizontally { it } + fadeIn()) with (slideOutHorizontally { -it } + fadeOut())
-                                    } else {
-                                        // Swipe right: new card comes from left, old card goes right
-                                        (slideInHorizontally { -it } + fadeIn()) with (slideOutHorizontally { it } + fadeOut())
-                                    }
+                                    (slideInHorizontally { it } + fadeIn()) with (slideOutHorizontally { -it } + fadeOut())
                                 }
                             },
                             label = "ToCard"
@@ -420,9 +368,9 @@ fun TransferScreen(
                                 coroutineScope.launch {
                                     isSwapping = true
                                     delay(300)
-                                    val temp = fromCard
-                                    fromCard = toCard
-                                    currentToIndex = currentCards.indexOf(temp).coerceAtLeast(0)
+                                    val temp = fromCardIndex
+                                    fromCardIndex = toCardIndex
+                                    toCardIndex = temp
                                     delay(300)
                                     isSwapping = false
                                 }
@@ -443,7 +391,12 @@ fun TransferScreen(
             ) {
                 OutlinedTextField(
                     value = amount,
-                    onValueChange = onAmountChanged,
+                    onValueChange = { newValue ->
+                        // Only allow numbers and one decimal point
+                        if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
+                            onAmountChanged(newValue)
+                        }
+                    },
                     label = { Text("Amount", color = Color.White.copy(alpha = 0.7f)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -516,8 +469,12 @@ fun TransferScreen(
 
     // Password Dialog
     if (showPasswordDialog) {
+        Log.d("TransferScreen", "🔑 Password dialog visible")
         AlertDialog(
-            onDismissRequest = { showPasswordDialog = false },
+            onDismissRequest = { 
+                Log.d("TransferScreen", "❌ Password dialog dismissed")
+                showPasswordDialog = false 
+            },
             title = { Text("Enter Password", color = Color.White) },
             text = {
                 Column(
@@ -537,32 +494,76 @@ fun TransferScreen(
                                 ) {
                                     Log.d("TransferScreen", "Fingerprint icon clicked")
                                     showBiometricPrompt = true
-                                    activity?.let { activity ->
-                                        if (activity is FragmentActivity) {
+                                    activity?.let { fragmentActivity ->
+                                        if (fragmentActivity is FragmentActivity) {
                                             biometricManager.authenticate(
-                                                activity = activity,
+                                                activity = fragmentActivity,
                                                 onSuccess = {
+                                                    Log.d("TransferScreen", "Biometric authentication successful")
                                                     showBiometricPrompt = false
-                                                    performTransfer()
+                                                    performTransfer(
+                                                        walletViewModel = walletViewModel,
+                                                        fromCard = fromCard,
+                                                        toCard = toCard,
+                                                        amount = amount,
+                                                        password = password,
+                                                        onAmountChanged = onAmountChanged,
+                                                        onTransfer = onTransfer,
+                                                        coroutineScope = coroutineScope,
+                                                        walletCards = walletCards,
+                                                        currentCards = currentCards,
+                                                        onSuccess = { finalAmount, finalCurrency ->
+                                                            transferAmount = finalAmount
+                                                            transferCurrency = finalCurrency
+                                                            showSuccessDialog = true
+                                                        },
+                                                        onError = { error ->
+                                                            errorDialogMessage = error
+                                                            showErrorDialog = true
+                                                        }
+                                                    )
                                                 },
                                                 onError = { error ->
+                                                    Log.e("TransferScreen", "Biometric authentication error: $error")
                                                     showBiometricPrompt = false
                                                     errorDialogMessage = error
                                                     showErrorDialog = true
                                                 },
                                                 onFallback = {
+                                                    Log.d("TransferScreen", "Falling back to password")
                                                     showBiometricPrompt = false
+                                                    performTransfer(
+                                                        walletViewModel = walletViewModel,
+                                                        fromCard = fromCard,
+                                                        toCard = toCard,
+                                                        amount = amount,
+                                                        password = password,
+                                                        onAmountChanged = onAmountChanged,
+                                                        onTransfer = onTransfer,
+                                                        coroutineScope = coroutineScope,
+                                                        walletCards = walletCards,
+                                                        currentCards = currentCards,
+                                                        onSuccess = { finalAmount, finalCurrency ->
+                                                            transferAmount = finalAmount
+                                                            transferCurrency = finalCurrency
+                                                            showSuccessDialog = true
+                                                        },
+                                                        onError = { error ->
+                                                            errorDialogMessage = error
+                                                            showErrorDialog = true
+                                                        }
+                                                    )
                                                 }
                                             )
                                         } else {
-                                            Log.e("TransferScreen", "Activity is not a FragmentActivity")
+                                            Log.e("TransferScreen", "Activity is not a FragmentActivity: ${fragmentActivity.javaClass.name}")
+                                            errorDialogMessage = "Unable to start biometric authentication"
                                             showErrorDialog = true
-                                            errorDialogMessage = "Unable to start biometric authentication: Invalid activity type"
                                         }
                                     } ?: run {
                                         Log.e("TransferScreen", "Activity context is null")
-                                        showErrorDialog = true
                                         errorDialogMessage = "Unable to start biometric authentication"
+                                        showErrorDialog = true
                                     }
                                 },
                             contentAlignment = Alignment.Center
@@ -621,8 +622,125 @@ fun TransferScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        Log.d("TransferScreen", "✅ Confirm transfer clicked with password length: ${password.length}")
                         showPasswordDialog = false
-                        performTransfer()
+                        if (walletViewModel != null) {
+                            Log.d("TransferScreen", """
+                                🚀 Initiating transfer with:
+                                - From Card: ${fromCard.accountNumber} (${fromCard.currency})
+                                - To Card: ${toCard.accountNumber} (${toCard.currency})
+                                - Amount: $amount
+                                - Currency: ${fromCard.currency}
+                            """.trimIndent())
+                            
+                            try {
+                                if (isBiometricAvailable) {
+                                    showBiometricPrompt = true
+                                    activity?.let { fragmentActivity ->
+                                        if (fragmentActivity is FragmentActivity) {
+                                            biometricManager.authenticate(
+                                                activity = fragmentActivity,
+                                                onSuccess = {
+                                                    Log.d("TransferScreen", "Biometric authentication successful")
+                                                    showBiometricPrompt = false
+                                                    performTransfer(
+                                                        walletViewModel = walletViewModel,
+                                                        fromCard = fromCard,
+                                                        toCard = toCard,
+                                                        amount = amount,
+                                                        password = password,
+                                                        onAmountChanged = onAmountChanged,
+                                                        onTransfer = onTransfer,
+                                                        coroutineScope = coroutineScope,
+                                                        walletCards = walletCards,
+                                                        currentCards = currentCards,
+                                                        onSuccess = { finalAmount, finalCurrency ->
+                                                            transferAmount = finalAmount
+                                                            transferCurrency = finalCurrency
+                                                            showSuccessDialog = true
+                                                        },
+                                                        onError = { error ->
+                                                            errorDialogMessage = error
+                                                            showErrorDialog = true
+                                                        }
+                                                    )
+                                                },
+                                                onError = { error ->
+                                                    Log.e("TransferScreen", "Biometric authentication error: $error")
+                                                    showBiometricPrompt = false
+                                                    errorDialogMessage = error
+                                                    showErrorDialog = true
+                                                },
+                                                onFallback = {
+                                                    Log.d("TransferScreen", "Falling back to password")
+                                                    showBiometricPrompt = false
+                                                    performTransfer(
+                                                        walletViewModel = walletViewModel,
+                                                        fromCard = fromCard,
+                                                        toCard = toCard,
+                                                        amount = amount,
+                                                        password = password,
+                                                        onAmountChanged = onAmountChanged,
+                                                        onTransfer = onTransfer,
+                                                        coroutineScope = coroutineScope,
+                                                        walletCards = walletCards,
+                                                        currentCards = currentCards,
+                                                        onSuccess = { finalAmount, finalCurrency ->
+                                                            transferAmount = finalAmount
+                                                            transferCurrency = finalCurrency
+                                                            showSuccessDialog = true
+                                                        },
+                                                        onError = { error ->
+                                                            errorDialogMessage = error
+                                                            showErrorDialog = true
+                                                        }
+                                                    )
+                                                }
+                                            )
+                                        } else {
+                                            Log.e("TransferScreen", "Activity is not a FragmentActivity: ${fragmentActivity.javaClass.name}")
+                                            errorDialogMessage = "Unable to start biometric authentication"
+                                            showErrorDialog = true
+                                        }
+                                    } ?: run {
+                                        Log.e("TransferScreen", "Activity context is null")
+                                        errorDialogMessage = "Unable to start biometric authentication"
+                                        showErrorDialog = true
+                                    }
+                                } else {
+                                    performTransfer(
+                                        walletViewModel = walletViewModel,
+                                        fromCard = fromCard,
+                                        toCard = toCard,
+                                        amount = amount,
+                                        password = password,
+                                        onAmountChanged = onAmountChanged,
+                                        onTransfer = onTransfer,
+                                        coroutineScope = coroutineScope,
+                                        walletCards = walletCards,
+                                        currentCards = currentCards,
+                                        onSuccess = { finalAmount, finalCurrency ->
+                                            transferAmount = finalAmount
+                                            transferCurrency = finalCurrency
+                                            showSuccessDialog = true
+                                        },
+                                        onError = { error ->
+                                            errorDialogMessage = error
+                                            showErrorDialog = true
+                                        }
+                                    )
+                                }
+                            } catch (e: Exception) {
+                                Log.e("TransferScreen", "❌ Exception during transfer: ${e.message}", e)
+                                errorDialogMessage = "An unexpected error occurred. Please try again."
+                                showErrorDialog = true
+                            }
+                        } else {
+                            Log.e("TransferScreen", "❌ walletViewModel is null, cannot perform transfer")
+                            errorDialogMessage = "Unable to process transfer. Please try again."
+                            showErrorDialog = true
+                        }
+                        password = ""
                     }
                 ) {
                     Text("Confirm", color = Color(0xFFD1B4FF))
@@ -805,5 +923,30 @@ fun TransferScreen(
             containerColor = Color(0xFF1A1A1D),
             shape = RoundedCornerShape(16.dp)
         )
+    }
+
+    // Add BackHandler
+    BackHandler {
+        when {
+            showSuccessDialog -> {
+                // Don't allow back navigation when success dialog is showing
+                Log.d("TransferScreen", "Back pressed while success dialog showing - ignoring")
+            }
+            showPasswordDialog -> {
+                // Close password dialog on back press
+                Log.d("TransferScreen", "Back pressed while password dialog showing - closing dialog")
+                showPasswordDialog = false
+            }
+            showErrorDialog -> {
+                // Close error dialog on back press
+                Log.d("TransferScreen", "Back pressed while error dialog showing - closing dialog")
+                showErrorDialog = false
+            }
+            else -> {
+                // Normal back navigation
+                Log.d("TransferScreen", "Back pressed - navigating back")
+                onBack()
+            }
+        }
     }
 } 
