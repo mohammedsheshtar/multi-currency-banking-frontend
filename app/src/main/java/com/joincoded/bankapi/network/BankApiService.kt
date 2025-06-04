@@ -66,12 +66,11 @@ interface AuthenticationApiService {
 
 interface KycApiService {
     @GET("api/v1/users/kyc")
-    suspend fun getMyKYC(@Header(Constants.authorization) token: String?): Response<KYCResponse>
-
+    suspend fun getMyKYC(@Header("Authorization") token: String): Response<KYCResponse>
 
     @POST("api/v1/users/kyc")
-    suspend fun addOrUpdateMyKYC(@Header(Constants.authorization) token: String?,
-                                 @Body request: KYCRequest): Response<*>?
+    suspend fun addOrUpdateMyKYC(@Header("Authorization") token: String,
+        @Body request: KYCRequest): Response<KYCResponse>
 }
 
 interface MembershipApiService {
@@ -126,7 +125,7 @@ interface TransactionApiService {
 
 interface UserApiService {
     @POST("api/v1/authentication/register")
-    suspend fun registerUser(@Body request: CreateUserDTO): Response<Any>
+    suspend fun registerUser(@Body request: CreateUserDTO): Response<Map<String, String>>
 }
 
 interface ConversionRateApiService {
