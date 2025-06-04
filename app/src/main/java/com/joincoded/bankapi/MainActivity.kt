@@ -19,7 +19,6 @@ import androidx.navigation.compose.rememberNavController
 import com.joincoded.bankapi.composable.ExchangeRateScreen
 import com.joincoded.bankapi.composable.LoginScreen
 import com.joincoded.bankapi.composable.RegistrationScreen
-import com.joincoded.bankapi.profile.ProfileScreen
 import com.joincoded.bankapi.composable.HomePage
 import com.joincoded.bankapi.composable.ShopHistoryScreen
 import com.joincoded.bankapi.composable.ShopPage
