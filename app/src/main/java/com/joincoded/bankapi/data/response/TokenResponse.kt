@@ -4,48 +4,62 @@ import java.io.Serializable
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
+import android.util.Log
+import com.google.gson.annotations.SerializedName
 
-data class TokenResponse(val token: String?) {
-    fun getBearerToken(): String {
-        return "Bearer $token"
-    }
-}
+data class TokenResponse(val token: String)
 
 data class ListAccountResponse(
-    val id: Long,
+    val id: Long? = null,
     val balance: BigDecimal,
     val accountNumber: String,
     val accountType: String,
     val createdAt: String,
     val countryCode: String,
-    val symbol: String
+    val symbol: String,
+    val cardColor: String? = null
 )
 
 data class CreateAccountResponse(
+    val id: Long,
     val balance: BigDecimal,
     val accountNumber: String,
     val accountType: String,
     val createdAt: LocalDateTime,
     val countryCode: String,
-    val symbol: String,
+    val symbol: String
 )
 
 data class AuthenticationResponse(
-    val token: String
+    val token: String,
+    val username: String
+)
+
+data class UserResponse(
+    val id: Long,
+    val username: String,
+    val email: String,
+    val role: String
 )
 
 data class KYCResponse(
     val firstName: String,
     val lastName: String,
-    val dateOfBirth: String,
+    @SerializedName("dateOfBirth")
+    private val dateOfBirthStr: String,
     val civilId: String,
     val country: String,
     val phoneNumber: String,
-    val homeAddress: String,
-    val salary: BigDecimal,
-    val tier: String,
-    val points: Int
-)
+    val email: String
+) {
+    val dateOfBirth: LocalDate
+        get() = try {
+            LocalDate.parse(dateOfBirthStr)
+        } catch (e: Exception) {
+            Log.e("KYCResponse", "Error parsing date: $dateOfBirthStr", e)
+            LocalDate.now()
+        }
+}
 
 data class ListMembershipResponse(
     val tierName: String,
@@ -66,7 +80,7 @@ data class ListItemsResponse(
     val isPurchasable: Boolean
 ) : Serializable
 
-data class ShopTransactionResponse(
+data class LegacyShopTransactionResponse(
     val itemName: String,
     val itemTier: String,
     val accountTier: String,
@@ -97,13 +111,12 @@ data class TransferResponse(
 )
 
 data class TransactionHistoryResponse(
+    val id: Long,
     val accountNumber: String,
-    val accountCurrency: String,
-    val requestedCurrency: String,
     val amount: BigDecimal,
-    val status: String,
-    val timeStamp: String,
     val transactionType: String,
+    val timeStamp: LocalDateTime,
+    val requestedCurrency: String,
     val conversionRate: BigDecimal?
 )
 
@@ -117,4 +130,9 @@ data class CurrencyResponse(
     val countryCode: String,
     val symbol: String,
     val name: String
+)
+
+data class ApiResponse(
+    val success: Boolean,
+    val message: String
 )

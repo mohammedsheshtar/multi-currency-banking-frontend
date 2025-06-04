@@ -1,11 +1,13 @@
 package com.joincoded.bankapi.viewmodel
 
+import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.joincoded.bankapi.data.request.AuthenticationRequest
 import com.joincoded.bankapi.data.response.ConversionRateResponse
 import com.joincoded.bankapi.data.response.CurrencyResponse
 import com.joincoded.bankapi.network.RetrofitHelper
+import com.joincoded.bankapi.utils.TokenManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,6 +21,7 @@ sealed class ExchangeRateUiState {
 }
 
 class ExchangeRateViewModel : ViewModel() {
+    private var context: Context? = null
 
     private val _fromCurrency = MutableStateFlow("")
     val fromCurrency: StateFlow<String> = _fromCurrency.asStateFlow()
@@ -38,10 +41,13 @@ class ExchangeRateViewModel : ViewModel() {
     private val _amount = MutableStateFlow("")
     val amount: StateFlow<String> = _amount.asStateFlow()
 
-    private var token: String? = null
+    fun initialize(context: Context) {
+        this.context = context.applicationContext
+    }
 
-    init {
-        loginAndFetch()
+    fun refreshData() {
+        fetchCurrencies()
+        fetchExchangeRates()
     }
 
     fun setFromCurrency(value: String) {
@@ -59,58 +65,57 @@ class ExchangeRateViewModel : ViewModel() {
         validateCurrency()
     }
 
-    private fun loginAndFetch() {
-        viewModelScope.launch {
-            _exchangeRateUiState.value = ExchangeRateUiState.Loading
-            try {
-                val response = RetrofitHelper.AuthenticationApi.login(
-                    AuthenticationRequest("Zainab3812", "1n23415MM67")
-                )
-                if (response.isSuccessful) {
-                    token = "Bearer ${response.body()?.token}"
-                    fetchCurrencies()
-                    fetchExchangeRates()
-                } else {
-                    _exchangeRateUiState.value = ExchangeRateUiState.Error("Login failed: ${response.message()}")
-                }
-            } catch (e: Exception) {
-                _exchangeRateUiState.value = ExchangeRateUiState.Error("Exception: ${e.message}")
-            }
-        }
-    }
-
     private fun fetchCurrencies() {
         viewModelScope.launch {
             try {
-                val response = RetrofitHelper.CurrenciesApi.getAllCurrencies(token)
+                val storedToken = TokenManager.getToken(context ?: return@launch)
+                if (storedToken.isNullOrBlank()) {
+                    _exchangeRateUiState.value = ExchangeRateUiState.Error("No authentication token available")
+                    return@launch
+                }
+
+                val response = RetrofitHelper.CurrenciesApi.getAllCurrencies(storedToken)
                 if (response.isSuccessful) {
                     val result = response.body()
                     if (result != null) {
                         _currencies.value = result
+                        Log.d("ExchangeRateViewModel", "Fetched ${result.size} currencies")
                     }
-                    _currencies.value = result ?: emptyList()
+                } else {
+                    _exchangeRateUiState.value = ExchangeRateUiState.Error("Failed to fetch currencies: ${response.code()}")
+                    Log.e("ExchangeRateViewModel", "Failed to fetch currencies: ${response.code()}")
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                _exchangeRateUiState.value = ExchangeRateUiState.Error("Error fetching currencies: ${e.message}")
+                Log.e("ExchangeRateViewModel", "Error fetching currencies", e)
+            }
         }
     }
 
     private fun fetchExchangeRates() {
         viewModelScope.launch {
             try {
-                val response = RetrofitHelper.ConversionRateApi.getAllRates(token)
+                val storedToken = TokenManager.getToken(context ?: return@launch)
+                if (storedToken.isNullOrBlank()) {
+                    _exchangeRateUiState.value = ExchangeRateUiState.Error("No authentication token available")
+                    return@launch
+                }
+
+                val response = RetrofitHelper.ConversionRateApi.getAllRates(storedToken)
                 if (response.isSuccessful) {
                     val rates = response.body()
                     if (rates != null) {
-                        _exchangeRateUiState.value = ExchangeRateUiState.Success(rates ?: emptyList())
-                        calculateRate()
+                        _exchangeRateUiState.value = ExchangeRateUiState.Success(rates)
+                        validateCurrency()
+                        Log.d("ExchangeRateViewModel", "Fetched ${rates.size} conversion rates")
                     }
-                    _exchangeRateUiState.value = ExchangeRateUiState.Success(rates ?: emptyList())
-                    calculateRate()
                 } else {
-                    _exchangeRateUiState.value = ExchangeRateUiState.Error("Failed to fetch rates.")
+                    _exchangeRateUiState.value = ExchangeRateUiState.Error("Failed to fetch rates: ${response.code()}")
+                    Log.e("ExchangeRateViewModel", "Failed to fetch rates: ${response.code()}")
                 }
             } catch (e: Exception) {
-                _exchangeRateUiState.value = ExchangeRateUiState.Error("Error: ${e.message}")
+                _exchangeRateUiState.value = ExchangeRateUiState.Error("Error fetching rates: ${e.message}")
+                Log.e("ExchangeRateViewModel", "Error fetching rates", e)
             }
         }
     }
@@ -127,18 +132,24 @@ class ExchangeRateViewModel : ViewModel() {
 
         if (matched != null) {
             _conversionRate.value = (matched.rate * amountValue.toBigDecimal()).setScale(3, RoundingMode.HALF_UP).toPlainString()
+            return
         }
 
         // fallback to backend
         viewModelScope.launch {
             try {
-                val response = RetrofitHelper.ConversionRateApi.getConversionRate(token, from, to)
+                val storedToken = TokenManager.getToken(context ?: return@launch)
+                if (storedToken.isNullOrBlank()) {
+                    _conversionRate.value = "?"
+                    return@launch
+                }
+
+                val response = RetrofitHelper.ConversionRateApi.getConversionRate(storedToken, from, to)
                 if (response.isSuccessful) {
                     val body = response.body() as? Map<*, *>
                     val rate = (body?.get("rate") as? Double)?.toBigDecimal()
                     val finalAmount = rate?.times(amountValue.toBigDecimal())
                     _conversionRate.value = finalAmount?.setScale(3, RoundingMode.HALF_UP)?.toPlainString() ?: "?"
-
                 } else {
                     _conversionRate.value = "?"
                 }
@@ -147,9 +158,6 @@ class ExchangeRateViewModel : ViewModel() {
             }
         }
     }
-
-
-
 
     fun getFlagEmoji(currencyCode: String?): String {
         if (currencyCode.isNullOrBlank()) return "🌐"

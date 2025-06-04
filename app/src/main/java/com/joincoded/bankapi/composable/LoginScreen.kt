@@ -1,5 +1,6 @@
 package com.joincoded.bankapi.composable
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -26,20 +27,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.joincoded.bankapi.NavRoutes
 import com.joincoded.bankapi.R
 import com.joincoded.bankapi.viewmodel.AuthViewModel
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun LoginScreen(
     navController: NavController,
+    onLoginSuccess: () -> Unit,
     onRegisterClick: () -> Unit,
     onForgotPasswordClick: () -> Unit,
-    onSocialClick: (String) -> Unit,
-    registered: Boolean = false
+    onSocialClick: () -> Unit,
+    registered: Boolean = false,
+    context: Context = LocalContext.current
 ) {
     val authViewModel: AuthViewModel = viewModel()
-    val authMessage by authViewModel.authMessage.collectAsState()
+    val errorMessage by authViewModel.errorMessage.collectAsState()
     val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
     val token by authViewModel.token.collectAsState()
 
@@ -48,9 +51,7 @@ fun LoginScreen(
 
     LaunchedEffect(isLoggedIn, token) {
         if (isLoggedIn && token != null) {
-            navController.navigate("${NavRoutes.NAV_ROUTE_PROFILE_SCREEN.value}/$token") {
-                popUpTo(NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value) { inclusive = true }
-            }
+            onLoginSuccess()
         }
     }
 
@@ -162,18 +163,20 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
             Button(
-                onClick = { authViewModel.login(username, password) },
+                onClick = { authViewModel.login(username, password, context) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
             ) {
                 Text("Sign In", color = primaryDark)
             }
 
-            Text(
-                text = authMessage,
-                color = onSurfaceDark,
-                modifier = Modifier.padding(top = 8.dp)
-            )
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage!!,
+                    color = Color.Red,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
             TextButton(onClick = onRegisterClick) {
@@ -184,7 +187,6 @@ fun LoginScreen(
                 )
             }
         }
-
 
         Row(
             modifier = Modifier
@@ -197,30 +199,45 @@ fun LoginScreen(
                     .size(50.dp)
                     .clip(CircleShape)
                     .background(Color.White.copy(alpha = 0.2f))
-                    .clickable { onSocialClick("google") },
+                    .clickable { onSocialClick() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(painter = painterResource(id = R.drawable.google), contentDescription = "Google Sign-In", tint = Color.Unspecified, modifier = Modifier.size(25.dp))
+                Icon(
+                    painter = painterResource(id = R.drawable.google),
+                    contentDescription = "Google Sign-In",
+                    tint = Color.Unspecified,
+                    modifier = Modifier.size(25.dp)
+                )
             }
             Box(
                 modifier = Modifier
                     .size(50.dp)
                     .clip(CircleShape)
                     .background(Color.White.copy(alpha = 0.2f))
-                    .clickable { onSocialClick("email") },
+                    .clickable { onSocialClick() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(imageVector = Icons.Filled.Email, contentDescription = "Email Sign-In", tint = Color.White, modifier = Modifier.size(25.dp))
+                Icon(
+                    imageVector = Icons.Default.Email,
+                    contentDescription = "Email Sign-In",
+                    tint = Color.White,
+                    modifier = Modifier.size(25.dp)
+                )
             }
             Box(
                 modifier = Modifier
                     .size(50.dp)
                     .clip(CircleShape)
                     .background(Color.White.copy(alpha = 0.2f))
-                    .clickable { onSocialClick("phone") },
+                    .clickable { onSocialClick() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(imageVector = Icons.Filled.Phone, contentDescription = "Phone Sign-In", tint = Color.White, modifier = Modifier.size(25.dp))
+                Icon(
+                    imageVector = Icons.Default.Phone,
+                    contentDescription = "Phone Sign-In",
+                    tint = Color.White,
+                    modifier = Modifier.size(25.dp)
+                )
             }
         }
     }

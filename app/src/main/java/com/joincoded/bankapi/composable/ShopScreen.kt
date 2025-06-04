@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -41,12 +42,16 @@ import com.joincoded.bankapi.ui.theme.TextLight
 import com.joincoded.bankapi.viewmodel.ShopViewModel
 
 @Composable
-fun ShopPage(navController: NavController, token: String, shopViewModel: ShopViewModel = viewModel()) {
+fun ShopScreen(
+    navController: NavController,
+    shopViewModel: ShopViewModel,
+    token: String
+) {
     val items = shopViewModel.items
     val error = shopViewModel.errorMessage.value
 
     LaunchedEffect(token) {
-        println("⚡ token received in ShopPage: $token")
+        println("⚡ token received in ShopScreen: $token")
         shopViewModel.token = token
         shopViewModel.fetchUserPointsAndItems()
     }
@@ -109,7 +114,6 @@ fun ShopPage(navController: NavController, token: String, shopViewModel: ShopVie
             }
         }
 
-
         if (!error.isNullOrBlank()) {
             Text(text = "Error: $error", color = Color.Red)
         }
@@ -127,7 +131,7 @@ fun ShopPage(navController: NavController, token: String, shopViewModel: ShopVie
         if (shopViewModel.showBuyConfirmDialog) {
             val item = shopViewModel.selectedItemToBuy
             if (item != null) {
-                androidx.compose.material3.AlertDialog(
+                AlertDialog(
                     onDismissRequest = { shopViewModel.showBuyConfirmDialog = false },
                     title = { Text("Confirm Purchase") },
                     text = { Text("Buy ${item.name} for ${item.requiredPoints} points?") },
@@ -149,7 +153,7 @@ fun ShopPage(navController: NavController, token: String, shopViewModel: ShopVie
         }
 
         if (shopViewModel.showSuccessDialog) {
-            androidx.compose.material3.AlertDialog(
+            AlertDialog(
                 onDismissRequest = { shopViewModel.showSuccessDialog = false },
                 title = { Text("Purchase Successful") },
                 text = { Text(shopViewModel.purchaseMessage ?: "") },
@@ -164,7 +168,7 @@ fun ShopPage(navController: NavController, token: String, shopViewModel: ShopVie
         }
 
         if (shopViewModel.showKycDialog) {
-            androidx.compose.material3.AlertDialog(
+            AlertDialog(
                 onDismissRequest = { shopViewModel.showKycDialog = false },
                 title = { Text("KYC Required") },
                 text = { Text("You need to complete your KYC profile before accessing the shop.") },
@@ -252,10 +256,6 @@ fun ShopItemCard(item: ShopItem, viewModel: ShopViewModel) {
         }
     }
 }
-
-
-
-
 
 data class ShopItem(
     val id: Long,

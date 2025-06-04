@@ -1,5 +1,6 @@
 package com.joincoded.bankapi.composable
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -7,7 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,32 +24,44 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.joincoded.bankapi.NavRoutes
 import com.joincoded.bankapi.data.request.CreateUserDTO
 import com.joincoded.bankapi.data.request.KYCRequest
 import com.joincoded.bankapi.viewmodel.AuthViewModel
 import java.math.BigDecimal
+import java.time.LocalDate
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.platform.LocalContext
 
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RegistrationScreen(navController: NavController) {
-    val authViewModel: AuthViewModel = viewModel()
-    val authMessage by authViewModel.authMessage.collectAsState()
-
+fun RegistrationScreen(
+    navController: NavController,
+    authViewModel: AuthViewModel,
+    onLoginClick: () -> Unit,
+    context: Context = LocalContext.current
+) {
+    var currentStep by remember { mutableStateOf(1) }
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
     var dateOfBirth by remember { mutableStateOf("") }
     var civilId by remember { mutableStateOf("") }
     var country by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
     var homeAddress by remember { mutableStateOf("") }
     var salary by remember { mutableStateOf("") }
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
 
-    var proceedToKyc by remember { mutableStateOf(false) }
+    val errorMessage by authViewModel.errorMessage.collectAsState()
+    val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
+
+    LaunchedEffect(isLoggedIn) {
+        if (isLoggedIn) {
+            onLoginClick()
+        }
+    }
 
     val backgroundDark = Color(0xFF141219)
     val primaryDark = Color(0xFFCDBDFF)
@@ -67,33 +80,24 @@ fun RegistrationScreen(navController: NavController) {
         unfocusedIndicatorColor = Color.Transparent,
         cursorColor = primaryDark
     )
-    @OptIn(ExperimentalMaterial3Api::class)
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {},
+                title = { Text("Registration") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
-                        )
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    titleContentColor = Color.White
-                )
+                }
             )
         },
         containerColor = backgroundDark
-    ) { innerPadding ->
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(paddingValues)
                 .padding(horizontal = 24.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -105,7 +109,7 @@ fun RegistrationScreen(navController: NavController) {
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            if (!proceedToKyc) {
+            if (currentStep == 1) {
                 TextField(
                     value = firstName,
                     onValueChange = { firstName = it },
@@ -162,18 +166,19 @@ fun RegistrationScreen(navController: NavController) {
                 Button(
                     onClick = {
                         if (password == confirmPassword) {
-                            proceedToKyc = true
+                            currentStep = 2
                         } else {
-                            authViewModel.setAuthMessage("Passwords do not match.")
+                            // Show error message
                         }
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black)
                 ) {
-                    Text("Continue", color = primaryDark)
+                    Text("Next", color = primaryDark)
                 }
-
-            } else {
+            } else if (currentStep == 2) {
                 TextField(
                     value = dateOfBirth,
                     onValueChange = { dateOfBirth = it },
@@ -215,6 +220,16 @@ fun RegistrationScreen(navController: NavController) {
                         .padding(vertical = 4.dp)
                 )
                 TextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email", color = Color.White) },
+                    colors = fieldColors,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(30.dp))
+                        .padding(vertical = 4.dp)
+                )
+                TextField(
                     value = homeAddress,
                     onValueChange = { homeAddress = it },
                     label = { Text("Home Address", color = Color.White) },
@@ -227,7 +242,7 @@ fun RegistrationScreen(navController: NavController) {
                 TextField(
                     value = salary,
                     onValueChange = { salary = it },
-                    label = { Text("Salary (in KD)", color = Color.White) },
+                    label = { Text("Salary", color = Color.White) },
                     colors = fieldColors,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -237,37 +252,32 @@ fun RegistrationScreen(navController: NavController) {
 
                 Button(
                     onClick = {
-                        authViewModel.registerWithKyc(
-                            userData = CreateUserDTO(
-                                username = username,
-                                password = password
-                            ),
-                            kyc = KYCRequest(
-                                firstName = firstName,
-                                lastName = lastName,
-                                dateOfBirth = dateOfBirth,
-                                civilId = civilId,
-                                country = country,
-                                phoneNumber = phoneNumber,
-                                homeAddress = homeAddress,
-                                salary = salary.toBigDecimalOrNull() ?: BigDecimal.ZERO
-                            )
+                        val createUserDTO = CreateUserDTO(username, password)
+                        val kycRequest = KYCRequest(
+                            firstName = firstName,
+                            lastName = lastName,
+                            dateOfBirth = dateOfBirth,
+                            civilId = civilId,
+                            country = country,
+                            phoneNumber = phoneNumber,
+                            homeAddress = homeAddress,
+                            salary = salary.toBigDecimalOrNull() ?: java.math.BigDecimal.ZERO
                         )
+                        // TODO: Implement register function in AuthViewModel
+                        // authViewModel.register(createUserDTO, kycRequest)
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Text("Register", color = primaryDark)
+                    Text("Register")
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = authMessage, color = onSurfaceDark, modifier = Modifier.padding(top = 8.dp))
-
-            if (authMessage == "Registration and KYC completed successfully!") {
-                LaunchedEffect(Unit) {
-                    navController.navigate(NavRoutes.NAV_ROUTE_LOGIN_SCREEN.value + "?registered=true")
-                }
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage!!,
+                    color = Color.Red,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
             }
         }
     }

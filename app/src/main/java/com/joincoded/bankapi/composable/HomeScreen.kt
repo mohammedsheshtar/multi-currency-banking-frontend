@@ -2,31 +2,17 @@ package com.joincoded.bankapi.composable
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,115 +21,134 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.joincoded.bankapi.ui.theme.Accent
-import com.joincoded.bankapi.ui.theme.AccentLight
-import com.joincoded.bankapi.ui.theme.CardDark
-import com.joincoded.bankapi.ui.theme.DarkBackground
-import com.joincoded.bankapi.ui.theme.TextLight
+import com.joincoded.bankapi.ui.theme.*
 import com.joincoded.bankapi.viewmodel.HomeViewModel
+import com.joincoded.bankapi.viewmodel.ShopViewModel
+import com.joincoded.bankapi.viewmodel.WalletViewModel
 import java.math.BigDecimal
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.joincoded.bankapi.data.response.TransactionHistoryResponse
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import com.joincoded.bankapi.data.TransactionItem
+import com.joincoded.bankapi.data.response.ListAccountResponse
+import androidx.compose.material3.ExperimentalMaterial3Api
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomePage(navController: NavController, viewModel: HomeViewModel = viewModel()) {
-    val userAccounts = viewModel.accounts
-    val transactions = viewModel.transactions
-    val errorMessage = viewModel.errorMessage
+fun HomeScreen(
+    navController: NavController,
+    homeViewModel: HomeViewModel,
+    shopViewModel: ShopViewModel,
+    walletViewModel: WalletViewModel
+) {
+    val userName by homeViewModel.userName.collectAsState()
+    val accounts by homeViewModel.accounts.collectAsState()
+    val transactions by homeViewModel.transactions.collectAsState()
+    val errorMessage by homeViewModel.error.collectAsState()
+    val isLoading by homeViewModel.isLoading.collectAsState()
 
     LaunchedEffect(Unit) {
-        viewModel.getAccounts()
-        viewModel.getAllTransactionsForUser()
+        homeViewModel.refreshData()
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(DarkBackground)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-
-        if (errorMessage != null && userAccounts.isEmpty()) {
-            Text(errorMessage!!, color = Color.Red)
-        }
-
-        if (userAccounts.isEmpty()) {
-            Text("Loading data...", color = Accent)
-        } else {
-            Text("Hello, ${viewModel.userName ?: "Xchanger"}!", color = Accent, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            Text("Your Balances", color = Accent, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(userAccounts) { account ->
-                    Card(
-                        modifier = Modifier
-                            .width(160.dp)
-                            .height(130.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = CardDark)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(12.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(getCurrencyFlag(account.countryCode), fontSize = 24.sp, modifier = Modifier.padding(bottom = 8.dp))
-                            Text("${account.countryCode} Account", color = Accent, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = String.format("%,.2f %s", account.balance, account.symbol),
-                                color = TextLight,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-            }
-
-            Text("Recent Transactions", color = Accent, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-
-            Box(
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp)
+        ) {
+            // Top Bar
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(210.dp)
+                    .padding(bottom = 24.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                Text(
+                    "Welcome, $userName",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = TextLight
+                )
+
+                IconButton(
+                    onClick = { homeViewModel.refreshData() },
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(CardDark, CircleShape)
                 ) {
-                    items(transactions.sortedByDescending { it.timeStamp }.take(15)) { txn ->
-                        TransactionCard(txn)
+                    Icon(
+                        Icons.Default.Refresh,
+                        contentDescription = "Refresh",
+                        tint = Accent
+                    )
+                }
+            }
+
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = Accent
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item {
+                        Text(
+                            text = "Your Accounts",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = TextLight,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
                     }
 
+                    items(accounts) { account ->
+                        AccountCard(account = account)
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Recent Transactions",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = TextLight,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+
+                    items(transactions) { transaction ->
+                        TransactionItem(transaction = transaction)
+                    }
                 }
             }
         }
 
-        Text("Quick Services", color = Accent, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-
-        val services = listOf(
-            ServiceAction("Transfer", Icons.Default.Send) { navController.navigate("transfer") },
-            ServiceAction("Shop", Icons.Default.Add) { navController.navigate("shopScreen")},
-            ServiceAction("ShopHist", Icons.Default.Add) { navController.navigate("shopHistory")}
-        )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            services.forEach { service ->
-                QuickServiceTile(
-                    label = service.title,
-                    icon = service.icon,
-                    onClick = service.onClick,
-                    modifier = Modifier.size(90.dp)
+        errorMessage?.let { error ->
+            Snackbar(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = error,
+                    color = TextLight
                 )
             }
         }
@@ -151,28 +156,100 @@ fun HomePage(navController: NavController, viewModel: HomeViewModel = viewModel(
 }
 
 @Composable
-fun QuickServiceTile(label: String, icon: ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .aspectRatio(1f)
-            .padding(horizontal = 4.dp)
-            .background(CardDark, shape = RoundedCornerShape(10.dp))
-            .clickable(onClick = onClick)
-            .padding(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+fun AccountCard(account: ListAccountResponse) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = CardDark
+        ),
+        shape = RoundedCornerShape(16.dp)
     ) {
-        Icon(icon, contentDescription = label, tint = Accent, modifier = Modifier.size(24.dp))
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(label, color = TextLight, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = account.accountType,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextLight
+                    )
+                    Text(
+                        text = account.accountNumber,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextLight.copy(alpha = 0.7f)
+                    )
+                }
+                Text(
+                    text = "${account.balance} ${account.symbol}",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = Accent
+                )
+            }
+        }
     }
 }
 
-data class ServiceAction(
-    val title: String,
-    val icon: ImageVector,
-    val onClick: () -> Unit
-)
+@Composable
+fun TransactionItem(transaction: TransactionItem) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = CardDark
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = transaction.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextLight
+                    )
+                    Text(
+                        text = "Account: ${transaction.cardId}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextLight.copy(alpha = 0.7f)
+                    )
+                }
+                Text(
+                    text = transaction.amount,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = Accent
+                )
+            }
+            Text(
+                text = transaction.date,
+                style = MaterialTheme.typography.bodySmall,
+                color = TextLight.copy(alpha = 0.5f),
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+    }
+}
 
 fun getCurrencyFlag(currencyCode: String?): String {
     if (currencyCode.isNullOrBlank()) return "🌐"
@@ -245,7 +322,6 @@ fun TransactionCard(txn: TransactionHistoryResponse) {
     }
 }
 
-
 fun formatDateTime(isoString: String): String {
     return try {
         val inputFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
@@ -256,5 +332,3 @@ fun formatDateTime(isoString: String): String {
         isoString
     }
 }
-
-

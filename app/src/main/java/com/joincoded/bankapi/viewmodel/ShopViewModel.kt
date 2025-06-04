@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.joincoded.bankapi.composable.ShopItem
+import com.joincoded.bankapi.data.response.ShopItemResponse
 import com.joincoded.bankapi.network.RetrofitHelper
 import kotlinx.coroutines.launch
 
@@ -34,68 +35,41 @@ class ShopViewModel : ViewModel() {
     private val membershipApiService = RetrofitHelper.MembershipApi
     private val kycApiService = RetrofitHelper.KycApi
 
-
     fun fetchUserPointsAndItems() {
         viewModelScope.launch {
             try {
-                val response = kycApiService.getMyKYC(token ?: return@launch)
-
-                if (response.isSuccessful) {
-                    val kyc = response.body()
-                    userPoints = kyc?.points ?: 0
-                    userTier = kyc?.tier ?: "BRONZE"
-                    fetchShopItems(userTier)
-                } else if (response.code() == 404) {
-                    println("⚠️ No KYC found. Cannot access shop.")
-                    showKycDialog = true
-                    return@launch
+                // First get the user's tier from memberships
+                val membershipResponse = membershipApiService.listUserMemberships(token)
+                if (membershipResponse.isSuccessful) {
+                    val memberships = membershipResponse.body()
+                    userTier = memberships?.firstOrNull()?.tierName ?: "BRONZE"
                 } else {
-                    val err = response.errorBody()?.string()
-                    println("❌ KYC failed: ${response.code()} - $err")
-                    errorMessage.value = "Failed to load KYC: $err"
-                    return@launch
+                    userTier = "BRONZE"
                 }
 
+                // Then get the shop items
+                fetchShopItems(userTier)
             } catch (e: Exception) {
-                println("❗ KYC exception: ${e.message}")
-                errorMessage.value = "Error fetching KYC: ${e.message}"
+                println("❗ Error fetching user data: ${e.message}")
+                errorMessage.value = "Error fetching user data: ${e.message}"
             }
         }
     }
 
-
-
-
-
-
     fun fetchShopItems(userTier: String?) {
         viewModelScope.launch {
             try {
-                println("🛍️ Fetching shop items with tier: $userTier, points: $userPoints")
-                val response = shopApiService.viewItems(token)
+                println("🛍️ Fetching shop items with tier: $userTier")
+                val response = shopApiService.viewItems(token ?: return@launch)
                 if (response.isSuccessful) {
-                    val data = response.body() as? List<Map<String, Any>>
-                    if (data == null) {
-                        println("❌ Shop items response was null or not a list")
-                        errorMessage.value = "Unexpected shop response format"
-                        return@launch
-                    }
-
-                    val shopItems = data.mapNotNull { item ->
+                    val shopItems = response.body()?.mapNotNull { item ->
                         try {
-                            val id = (item["id"] as? Double)?.toLong() ?: return@mapNotNull null
-                            val name = item["itemName"] as? String ?: return@mapNotNull null
-                            val tier = item["tierName"] as? String ?: return@mapNotNull null
-                            val cost = (item["pointCost"] as? Double)?.toInt() ?: return@mapNotNull null
-                            val unlocked = item["isPurchasable"] as? Boolean ?: false
-                            val quantity = (item["itemQuantity"] as? Double)?.toInt() ?: 0
-
                             ShopItem(
-                                id = id,
-                                name = name,
-                                tier = tier,
-                                requiredPoints = cost,
-                                tierColor = when (tier.uppercase()) {
+                                id = item.id,
+                                name = item.name,
+                                tier = item.tierName,
+                                requiredPoints = item.pointCost,
+                                tierColor = when (item.tierName.uppercase()) {
                                     "BRONZE" -> Color(0xFFCD7F32)
                                     "SILVER" -> Color(0xFFC0C0C0)
                                     "GOLD" -> Color(0xFFFFD700)
@@ -103,15 +77,15 @@ class ShopViewModel : ViewModel() {
                                     "DIAMOND" -> Color(0xFF00BFFF)
                                     else -> Color.Gray
                                 },
-                                isUnlocked = unlocked && compareTier(userTier ?: "", tier),
+                                isUnlocked = compareTier(userTier ?: "", item.tierName),
                                 userPoints = userPoints,
-                                itemQuantity = quantity
+                                itemQuantity = 1 // Default to 1 since it's not in the response
                             )
                         } catch (e: Exception) {
                             println("❌ Error parsing item: ${e.message}")
                             null
                         }
-                    }
+                    } ?: emptyList()
 
                     items.clear()
                     items.addAll(shopItems)
@@ -129,18 +103,20 @@ class ShopViewModel : ViewModel() {
         }
     }
 
-
-
     fun buyItem(itemId: Long) {
         viewModelScope.launch {
             try {
-                val response = shopApiService.buyItem(token, itemId.toInt())
+                val response = shopApiService.buyItem(token ?: return@launch, itemId)
                 if (response.isSuccessful) {
-                    val updatedPoints = (response.body() as? Map<*, *>)?.get("updatedPoints") as? Double
-                    updatedPoints?.let { userPoints = it.toInt() }
+                    // Get the updated points from the transaction history
+                    val transactionResponse = shopApiService.getShopTransaction(token ?: return@launch)
+                    if (transactionResponse.isSuccessful) {
+                        val transactions = transactionResponse.body()
+                        userPoints = transactions?.firstOrNull()?.updatedPoints ?: userPoints
+                    }
 
                     val item = selectedItemToBuy
-                    purchaseMessage = "You bought ${item?.name} for ${item?.requiredPoints} points.\nNow you have ${updatedPoints?.toInt()} points."
+                    purchaseMessage = "You bought ${item?.name} for ${item?.requiredPoints} points.\nNow you have $userPoints points."
                     showSuccessDialog = true
                     selectedItemToBuy = null
                     fetchShopItems(userTier)

@@ -38,10 +38,10 @@ fun ShopHistoryScreen(viewModel: ShopHistoryViewModel, token: String) {
 
     val sortedTransactions = remember(transactions, sortOption) {
         when (sortOption) {
-            "Newest First" -> transactions.sortedByDescending { it.timeOfTransaction }
-            "Oldest First" -> transactions.sortedBy { it.timeOfTransaction }
-            "Least Points" -> transactions.sortedBy { it.pointsSpent }
-            "Most Points" -> transactions.sortedByDescending { it.pointsSpent }
+            "Newest First" -> transactions.sortedByDescending { it.purchasedAt }
+            "Oldest First" -> transactions.sortedBy { it.purchasedAt }
+            "Least Points" -> transactions.sortedBy { it.pointCost }
+            "Most Points" -> transactions.sortedByDescending { it.pointCost }
             else -> transactions
         }
     }
@@ -136,15 +136,13 @@ fun ShopHistoryScreen(viewModel: ShopHistoryViewModel, token: String) {
 @Composable
 fun ShopHistoryCard(txn: ShopTransactionResponse) {
     val formattedDate = try {
-        val inputFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
         val outputFormatter = DateTimeFormatter.ofPattern("MMM d • h:mm a")
-        val parsedDate = java.time.LocalDateTime.parse(txn.timeOfTransaction, inputFormatter)
-        parsedDate.format(outputFormatter)
+        txn.purchasedAt.format(outputFormatter)
     } catch (e: Exception) {
-        txn.timeOfTransaction
+        txn.purchasedAt.toString()
     }
 
-    val tierColor = when (txn.itemTier.uppercase()) {
+    val tierColor = when (txn.tierName.uppercase()) {
         "BRONZE" -> Color(0xFFCD7F32)
         "SILVER" -> Color(0xFFC0C0C0)
         "GOLD" -> Color(0xFFFFD700)
@@ -191,14 +189,14 @@ fun ShopHistoryCard(txn: ShopTransactionResponse) {
                 )
 
                 Text(
-                    text = "${txn.itemTier} • -${txn.pointsSpent} pts",
+                    text = "${txn.tierName} • -${txn.pointCost} pts",
                     color = tierColor,
                     fontSize = 12.sp
                 )
 
                 Text(
                     text = formattedDate,
-                    color = Color.LightGray,
+                    color = Color.Gray,
                     fontSize = 12.sp
                 )
             }
@@ -208,15 +206,15 @@ fun ShopHistoryCard(txn: ShopTransactionResponse) {
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "From Tier:",
+                    text = "Updated Points",
                     color = Color.Gray,
                     fontSize = 12.sp
                 )
                 Text(
-                    text = txn.accountTier,
-                    color = tierColor,
+                    text = "${txn.updatedPoints}",
+                    color = Color.White,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
+                    fontSize = 16.sp
                 )
             }
         }

@@ -1,4 +1,3 @@
-
 package com.joincoded.bankapi.data.request
 
 import java.math.BigDecimal
@@ -42,8 +41,14 @@ data class WithdrawRequest(
 data class TransferRequest(
     val sourceAccount: String,
     val destinationAccount: String,
-    val amount: BigDecimal,
+    val amount: String,
     val countryCode: String
+)
+
+data class TransferLinkRequest(
+    val accountNumber: String,
+    val amount: Double,
+    val currencyCode: String
 )
 
 data class CreateUserDTO(
@@ -54,4 +59,10 @@ data class CreateUserDTO(
 data class ConversionRateRequest(
     val from: String,
     val to: String
+)
+
+data class CreateMembership(
+    val tierName: String,
+    val memberLimit: Int,
+    val discountAmount: java.math.BigDecimal
 )
