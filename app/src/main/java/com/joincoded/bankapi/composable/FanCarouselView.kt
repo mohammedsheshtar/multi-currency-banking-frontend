@@ -84,7 +84,6 @@ fun FanCarouselView(
     var focusedCard by remember { mutableStateOf<CardState?>(null) }
     var showFocusedView by remember { mutableStateOf(false) }
     var showTransferScreen by remember { mutableStateOf(false) }
-    var showTransferToOthersScreen by remember { mutableStateOf(false) }
     var showPayMeScreen by remember { mutableStateOf(false) }
     var showCloseAccountModal by remember { mutableStateOf(false) }
     var selectedCardForClose by remember { mutableStateOf<PaymentCard?>(null) }
@@ -129,8 +128,8 @@ fun FanCarouselView(
     }
 
     // Add effect to refresh transactions after transfers
-    LaunchedEffect(showTransferScreen, showTransferToOthersScreen, showPayMeScreen) {
-        if (!showTransferScreen && !showTransferToOthersScreen && !showPayMeScreen && focusedCard != null) {
+    LaunchedEffect(showTransferScreen, showPayMeScreen) {
+        if (!showTransferScreen && !showPayMeScreen && focusedCard != null) {
             // Refresh transactions when returning from any transfer screen
             Log.d("FanCarouselView", "🔄 Refreshing transactions after transfer screen")
             walletViewModel.fetchTransactionHistory(focusedCard!!.card.accountNumber, forceRefresh = true)
@@ -207,16 +206,18 @@ fun FanCarouselView(
             }
         }
 
-        if (showTransferToOthersScreen && focusedCard != null) {
-            TransferToOthersScreen(
-                fromCard = focusedCard!!.card,
-                onBack = {
-                    showTransferToOthersScreen = false
-                    showFocusedView = true
-                },
-                walletViewModel = walletViewModel
-            )
-        } else if (showPayMeScreen && focusedCard != null) {
+        // Comment out Transfer to Others screen
+        // if (showTransferToOthersScreen && focusedCard != null) {
+        //     TransferToOthersScreen(
+        //         fromCard = focusedCard!!.card,
+        //         onBack = {
+        //             showTransferToOthersScreen = false
+        //             showFocusedView = true
+        //         },
+        //         walletViewModel = walletViewModel
+        //     )
+        // } else 
+        if (showPayMeScreen && focusedCard != null) {
             PayMeScreen(
                 fromCard = focusedCard!!.card,
                 onBack = {
@@ -273,14 +274,14 @@ fun FanCarouselView(
                                     label = "Transfer",
                                     onClick = { showTransferScreen = true }
                                 ),
-                                ServiceAction(
-                                    icon = { TransferUsersIcon() },
-                                    label = "Transfer to Others",
-                                    onClick = { 
-                                        showTransferToOthersScreen = true
-                                        showFocusedView = false
-                                    }
-                                ),
+                                // ServiceAction(
+                                //     icon = { TransferUsersIcon() },
+                                //     label = "Transfer to Others",
+                                //     onClick = { 
+                                //         showTransferToOthersScreen = true
+                                //         showFocusedView = false
+                                //     }
+                                // ),
                                 ServiceAction(
                                     icon = { HandHoldingDollarIcon() },
                                     label = "Pay Me",
